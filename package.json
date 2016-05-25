@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "coffee-script": "",
+    "q": "",
+    "chalk": "",
+    "express": "",
+    "socket.io": "",
+    "request": ""
+  }
+}
