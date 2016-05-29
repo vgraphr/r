@@ -23,13 +23,17 @@ unless module.dynamic
       <html>
       <head>
       <title></title>
+      <!--
       <link rel="stylesheet" href="assets/bootstrap.css" />
       <link rel="stylesheet" href="assets/bootstrap-rtl.css" />
       <script src="assets/jquery.js"></script>
       <script src="assets/bootstrap.js"></script>
+      -->
       </head>
       <body>
+      <!--
       <div id="content"></div>
+      -->
       <script src="assets/scripts.js"></script>
       </body>
       </html>

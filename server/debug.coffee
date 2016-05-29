@@ -237,12 +237,6 @@ app.get "/scripts.js", (req, res) ->
                 module.unloadListeners.splice(module.unloadListeners.indexOf(callback), 1);
               }
             },
-            onAnythingChanged: function(callback) {
-              anythingChangeListeners.push(callback);
-              return function() {
-                anythingChangeListeners.splice(anythingChangeListeners.indexOf(callback), 1);
-              }
-            },
             reload: function() {
               load(num);
             },
@@ -290,19 +284,23 @@ app.get "/scripts.js", (req, res) ->
 appRoute = app._router.stack.filter (x) -> x.route?.path is '/'
 appRoute = appRoute[0]
 app._router.stack.splice app._router.stack.indexOf(appRoute), 1
-app.get "/", (req, res) ->
+app.get '/', (req, res) ->
   res.send '
     <!doctype html>
     <html>
     <head>
     <title></title>
+    <!--
     <link rel="stylesheet" href="assets/bootstrap.css" />
     <link rel="stylesheet" href="assets/bootstrap-rtl.css" />
     <script src="assets/jquery.js"></script>
     <script src="assets/bootstrap.js"></script>
+    -->
     </head>
     <body>
+    <!--
     <div id="content"></div>
+    -->
     <script src="scripts.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script>

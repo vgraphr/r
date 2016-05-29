@@ -1,49 +1,48 @@
-content = document.getElementById 'content'
+{addPageCSS, addPageStyle, setStyle, destroy} = require './utils'
+page = require './page'
 
 if module.dynamic
-
   prevOnerror = window.onerror
   window.onerror = ->
     prevOnerror?.apply window, arguments
-    content.innerText = JSON.stringify [].slice.call arguments
+    document.body.innerText = JSON.stringify [].slice.call arguments
     document.body.style.background = 'red'
 
 if module.hot
-  # console.clear()
-  while content.children.length
-    content.removeChild content.children[0]
+  elements = document.body.children
+  while elements.length
+    destroy elements[0]
 
 else
-  css = document.createElement 'link'
-  css.setAttribute 'rel', 'stylesheet'
-  css.setAttribute 'href', '/assets/font-awesome/css/font-awesome.css'
-  document.head.appendChild css
+  addPageCSS 'font-awesome/css/font-awesome.css'
+  addPageCSS 'iransans/css/iransans.css'
+  addPageStyle "
+  * {
+    font-family: 'iransans';
+    box-sizing: border-box;
+    border: 0;
+    outline: 0;
+    padding: 0;
+    margin: 0;
+    position: relative;
+    direction: rtl;
+    -webkit-user-select: none; /* Chrome/Safari */        
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* IE10+ */
+    -o-user-select: none;
+    user-select: none;
+  }
+  body {
+    height: 100%;
+  }
+  "
+  document.title = 'رصد'
 
-  css = document.createElement 'link'
-  css.setAttribute 'rel', 'stylesheet'
-  css.setAttribute 'href', '/assets/iransans/css/iransans.css'
-  document.head.appendChild css
-
-  style = document.createElement 'style'
-  style.innerText = style.innerHTML = "* { font-family: 'iransans' }"
-  document.head.appendChild style
-
-document.title = 'رصد'
-
-# service = require './service'
-# service.initialData()
-
-do clearBody = ->
-  # console.clear()
-  document.body.style.background = 'rgb(245, 245, 245)'
-
-{render, createElement: E} = require './react'
-page = require './page'
-do renderPage = ->
-  render E(page), content
+do render = ->
+  page()
 
 if module.dynamic
-  module.onUnload page.onChanged (_page) ->
-    page = _page
-    clearBody()
-    renderPage()
+  unsubscribers = [
+    page.onChanged module.reload
+  ]
+  module.onUnload -> unsubscribers.forEach (unsubscribe) -> unsubscribe()
