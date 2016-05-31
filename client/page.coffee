@@ -1,4 +1,4 @@
-{E, setStyle, append} = require './utils'
+{E, setStyle, append, bindEvent} = require './utils'
 table = require './table'
 
 borderStyle =
@@ -15,7 +15,16 @@ module.exports = ->
   header = E 'img', width: '100%'
   header.setAttribute 'src', '/assets/header.png'
 
-  border = E borderStyle, table
+  border = E borderStyle,
+    table.element
+    name  = E 'input', top: 300
+    add   = E 'input', top: 300
+
+  name.setAttribute 'placeholder', 'name'
+  add.setAttribute 'type', 'button'
+  add.setAttribute 'value', 'add'
+  bindEvent add, 'click', ->
+    table.addHeader name: name.value
 
   append [header, border]
 

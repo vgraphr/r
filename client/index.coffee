@@ -34,6 +34,7 @@ else
   }
   body {
     height: 100%;
+    overflow-x: hidden;
   }
   "
   document.title = 'رصد'

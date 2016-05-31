@@ -17,6 +17,12 @@ extend = (target, sources...) ->
           delete target[value]
   target
 
+reinsert = (arr, from, to) ->
+  return if from is to
+  value = arr[from]
+  arr.splice from, 1
+  arr.splice to, 0, value
+
 toEnglish = (value) ->
   value = '' + value
   '۰۱۲۳۴۵۶۷۸۹'.split ''
@@ -60,11 +66,9 @@ append = ->
   else
     parent.appendChild element
 
-destroy = (element) ->
-  element.parentNode.removeChild element
+destroy = (element) -> element.parentNode.removeChild element
 
-pxToNum = (val) ->
-  +val.substr 0, val.length - 2
+pxToNum = (val) -> +val.substr 0, val.length - 2
 
 setStyle = (element, style = {}) ->
   Object.keys(style).forEach (key) ->
@@ -102,55 +106,51 @@ E = do ->
       args.splice 0, 0, 'div', {}
       e.apply null, args
 
-isIn = (element, e) ->
-  rect = element.getBoundingClientRect()
-  minX = rect.left
-  maxX = rect.left + rect.width
-  minY = rect.top
-  maxY = rect.top + rect.height
-  minX < e.pageX < maxX and minY < e.pageY < maxY
+events = do ->
+  isIn = (element, e) ->
+    rect = element.getBoundingClientRect()
+    minX = rect.left
+    maxX = rect.left + rect.width
+    minY = rect.top
+    maxY = rect.top + rect.height
+    minX < e.pageX < maxX and minY < e.pageY < maxY
 
-mouseover = (element, callback) ->
-  allreadyIn = false
-  bindEvent document.body, 'mousemove', (e) ->
-    if isIn element, e
-      callback e unless allreadyIn
-      allreadyIn = true
-    else
-      allreadyIn = false
+  mouseover: (element, callback) ->
+    allreadyIn = false
+    bindEvent document.body, 'mousemove', (e) ->
+      if isIn element, e
+        callback e unless allreadyIn
+        allreadyIn = true
+      else
+        allreadyIn = false
 
-mouseout = (element, callback) ->
-  allreadyOut = false
-  bindEvent document.body, 'mousemove', (e) ->
-    unless isIn element, e
-      callback e unless allreadyOut
-      allreadyOut = true
-    else
-      allreadyOut = false
+  mouseout: (element, callback) ->
+    allreadyOut = false
+    bindEvent document.body, 'mousemove', (e) ->
+      unless isIn element, e
+        callback e unless allreadyOut
+        allreadyOut = true
+      else
+        allreadyOut = false
 
-mousemove = (callback) ->
-  bindEvent document.body, 'mousemove', callback
+  mousemove: (callback) ->
+    bindEvent document.body, 'mousemove', callback
 
-mouseup = (callback, handleOut) ->
-  bindEvent document.body, 'mouseup', callback
-  if handleOut
-    bindEvent document.body, 'mouseout', (e) ->
-      from = e.relatedTarget || e.toElement
-      if !from || from.nodeName == "HTML"
-        callback e
+  mouseup: (handleOut) -> (callback) ->
+    bindEvent document.body, 'mouseup', callback
+    if handleOut
+      bindEvent document.body, 'mouseout', (e) ->
+        from = e.relatedTarget || e.toElement
+        if !from || from.nodeName == "HTML"
+          callback e
 
 animation = (rawCallback, wrapCallback) ->
-  if wrapCallback
-    _callback = (x) ->
-      rawCallback? (start, end) -> start + (end - start) * x
-  else
-    _callback = rawCallback
-
+  
   lastX = null
   callback = (x) ->
     unless lastX is x
       lastX = x
-      _callback x
+      rawCallback x, (start, end) -> start + (end - start) * x
 
   x = 0
   running = false
@@ -182,18 +182,13 @@ animation = (rawCallback, wrapCallback) ->
       requestAnimationFrame animate
 
 timeStep = 1 / 60
-spring = ([k, m], rawCallback, wrapCallback) ->
-  if wrapCallback
-    _callback = (x) ->
-      rawCallback? (start, end) -> start + (end - start) * x
-  else
-    _callback = rawCallback
-
+spring = ([k, m], rawCallback) ->
+  
   lastX = null
   callback = (x) ->
     unless lastX is x
       lastX = x
-      _callback x
+      rawCallback x, (start, end) -> start + (end - start) * x
     
   x = xRest = 0
   v = 0
@@ -246,6 +241,7 @@ spring = ([k, m], rawCallback, wrapCallback) ->
 module.exports = {
   generateId
   extend
+  reinsert
   toEnglish
   toPersian
   addPageCSS
@@ -256,10 +252,7 @@ module.exports = {
   setStyle
   append
   destroy
-  mouseover
-  mouseout
-  mousemove
-  mouseup
+  events
   animation
   spring
 }

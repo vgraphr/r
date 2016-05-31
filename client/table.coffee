@@ -1,30 +1,4 @@
-{extend, E, append, mouseover, mouseout, mousemove, mouseup, bindEvent, setStyle, spring, animation} = require './utils'
-
-
-headers = [1..10].map (x, i) ->
-  name: x
-  width: 155 + (i - 5) * 20
-  values: [0..9].map (x) -> x * 10 + i + 1
-
-addHeader = (header) ->
-  prevTotalWidth = totalWidth = 0
-  headers.forEach (header) ->
-    prevTotalWidth += header.width
-    newWidth = header.width * 0.9
-    header.resize? newWidth
-    header.width = newWidth
-    totalWidth += header.width
-    header.putInPlace?()
-  header.width = prevTotalWidth - totalWidth
-  headers.push header
-  header.new = true
-  append table, initializeHeader header, headers.length - 1
-
-setTimeout (->
-  addHeader
-    name: 'new'
-    values: [0..9].map (x) -> "$#{x}"
-), 1000
+{extend, reinsert, E, append, destroy, events, bindEvent, setStyle, spring, animation} = require './utils'
 
 tableStyle =
   display: 'block'
@@ -43,41 +17,50 @@ headerStyle = extend {}, cellStyle,
   borderTop: '1px solid #DDD'
   borderBottom: '1px solid #DDD'
   borderLeft: '1px dashed #EEE'
+  borderRight: '1px dashed #EEE'
   color: '#888'
   fontSize: 20
-  transition: 'border 0.15s'
+  transition: 'border 0.25s'
   position: 'absolute'
+  overflow: 'hidden'
 
-reinsert = (arr, from, to) ->
-  return if from is to
-  value = arr[from]
-  arr.splice from, 1
-  arr.splice to, 0, value
+table = E tableStyle
 
-leftX = null
-totalWidth = null
+createHeaderElement = (name) ->
+  element = E headerStyle, name
+  bindEvent element, 'mousemove', -> setStyle element, color: '#5BC0DE', borderBottom: '2px solid #5BC0DE'
+  events.mouseout element, -> setStyle element, color: '#888', borderBottom: '1px solid #DDD'
+  element
 
-headerElements = headers.map initializeHeader = (header, i) ->
-  header.index = i
+headers = []
+
+leftX = 0
+setTimeout -> leftX = table.getBoundingClientRect().left
+
+totalWidth = 0
+
+addHeader = (header) ->
+
+  isNew = !header.width?
+
+  if isNew
+    prevTotalWidth = totalWidth
+    totalWidth = 0
+    headers.forEach (header) ->
+      header.resize? header.width * 0.9
+      totalWidth += header.width
+      header.putInPlace?()
+    header.width = prevTotalWidth - totalWidth
+
+  header.index = headers.length
+
+  headers.push header
 
   totalWidth += header.width
 
-  style = extend {}, headerStyle
-  if i is headers.length - 1
-    extend style, borderLeft: '0'
-  element = E style, header.name
+  element = createHeaderElement header.name
 
-  if i is 0
-    setTimeout ->
-      leftX = element.getBoundingClientRect().left
-
-  mouseover element, (e) ->
-    setStyle element, color: '#5BC0DE', borderBottom: '2px solid #5BC0DE'
-  mouseout element, (e) ->
-    setStyle element, color: '#888', borderBottom: '1px solid #DDD'
-
-  getPlace = ->
-    headers.slice(0, header.index).reduce ((left, {width}) -> left + width), 0
+  getPlace = -> headers.slice(0, header.index).reduce ((left, {width}) -> left + width - 1), 0
 
   x = null
   xSpring = spring [300, 50], (a) ->
@@ -90,16 +73,16 @@ headerElements = headers.map initializeHeader = (header, i) ->
       boxShadow: "rgba(0, 0, 0, 0.2) 0px #{shadow}px #{2 * shadow}px 0px"
       transform: "scale(#{scale})"
       WebkitTransform: "scale(#{scale})"
+  widthSpring = spring [300, 50], (width) ->
+    setStyle element, {width}
 
   place = getPlace()
-  if header.new
-    animation(((interpolate) ->
-      width = interpolate 0, header.width
-      setStyle element, {width}
-      xSpring (place + header.width - width), 'goto'
-    ), true) 0, 1, 150
+  if isNew
+    widthSpring header.width
+    xSpring place + header.width, 'goto'
+    xSpring place
   else
-    setStyle element, width: header.width
+    widthSpring header.width, 'goto'
     xSpring place, 'goto'
 
   header.fixZIndex = ->
@@ -107,7 +90,10 @@ headerElements = headers.map initializeHeader = (header, i) ->
   header.putInPlace = ->
     xSpring getPlace()
   header.resize = (newWidth) ->
-    animation(((interpolate) -> setStyle element, width: interpolate header.width, newWidth), true) 0, 1, 150
+    widthSpring newWidth
+    header.width = newWidth
+  header.destroy = ->
+    destroy element
 
   down = null
   bindEvent element, 'mousedown', ({pageX}) ->
@@ -119,7 +105,7 @@ headerElements = headers.map initializeHeader = (header, i) ->
     downSpring 1
 
   lastVictim = null
-  mousemove ({pageX}) ->
+  events.mousemove ({pageX}) ->
     if down
       xSpring pageX - down.delta, 'goto'
       place = 0
@@ -136,18 +122,37 @@ headerElements = headers.map initializeHeader = (header, i) ->
       return if victim is lastVictim
       lastVictim = victim
       reinsert headers, header.index, place
-      headers.forEach (h, i) ->
-        h.index = i
+      headers.forEach (h, index) ->
+        h.index = index
         if h isnt header
           h.putInPlace?()
-  mouseup (->
+  events.mouseup(true) ->
     down = null
     downSpring 0
     header.putInPlace()
-  ), true
 
-  element
+  append table, element
 
-table = E tableStyle, [headerElements]
-module.exports = table
+removeHeader = (index) ->
+  header = headers[index]
+  partialWidth = totalWidth - header.width
+  temp = 0
+  header.destroy?()
+  headers.splice index, 1
+  headers.forEach (header, i) ->
+    if header.index > index
+      header.index--
+    header.resize? if i < headers.length - 1 then header.width * totalWidth / partialWidth else totalWidth - temp
+    temp += header.width
+    header.putInPlace?()
 
+[1..10].forEach (x, i) ->
+  addHeader
+    name: x
+    width: 160 + (i - 5) * 20
+
+module.exports = {
+  element: table
+  addHeader
+  removeHeader
+}
