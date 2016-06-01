@@ -6,11 +6,8 @@ tableStyle =
 
 cellStyle =
   background: 'white'
-  cursor: 'default'
   display: 'inline-block'
   height: 40
-  lineHeight: 40
-  paddingRight: 10
   fontSize: 11
 
 headerStyle = extend {}, cellStyle,
@@ -18,47 +15,69 @@ headerStyle = extend {}, cellStyle,
   borderBottom: '1px solid #DDD'
   borderLeft: '1px dashed #EEE'
   borderRight: '1px dashed #EEE'
-  color: '#888'
   fontSize: 20
-  transition: 'border 0.25s'
   position: 'absolute'
-  overflow: 'hidden'
+  color: '#888'
+  left: 0
+  right: 0
+
+headers = []
 
 table = E tableStyle
 
-createHeaderElement = (name) ->
-  element = E headerStyle, name
-  bindEvent element, 'mousemove', -> setStyle element, color: '#5BC0DE', borderBottom: '2px solid #5BC0DE'
-  events.mouseout element, -> setStyle element, color: '#888', borderBottom: '1px solid #DDD'
-  element
-
-headers = []
+sombodeyIsBeingDragged = false
 
 leftX = 0
 setTimeout -> leftX = table.getBoundingClientRect().left
 
-totalWidth = 0
+tableWidth = 100
 
-addHeader = (header) ->
+addHeader = (headerOrHeaders, isBatch) ->
 
-  isNew = !header.width?
+  if Array.isArray headerOrHeaders
+    return unless headerOrHeaders.length
+    headerOrHeaders[0].width = tableWidth - headerOrHeaders.slice(1).reduce ((totalWidth, {width}) -> totalWidth + width - 1), 0
+    headerOrHeaders.forEach (header) -> addHeader header, true
+    return
+
+  isNew = not isBatch
+  header = headerOrHeaders
 
   if isNew
-    prevTotalWidth = totalWidth
     totalWidth = 0
     headers.forEach (header) ->
       header.resize? header.width * 0.9
-      totalWidth += header.width
+      totalWidth += header.width - 1
       header.putInPlace?()
-    header.width = prevTotalWidth - totalWidth
+    header.width = tableWidth - totalWidth + 1
 
   header.index = headers.length
 
   headers.push header
 
-  totalWidth += header.width
+  element = E position: 'absolute', height: 200, background: 'white'
 
-  element = createHeaderElement header.name
+  headerElement = E headerStyle,
+    span = E position: 'absolute', left: 30, right: 10, lineHeight: 40, overflow: 'hidden', color: '#888', transition: '0.15s', header.name
+    bottomBorder = E position: 'absolute', bottom: -1, left: 0, right: 0, background: '#5BC0DE', transition: '0.15s'
+    up = E position: 'absolute', top: 10, left: 10, fontSize: 11, cursor: 'pointer'
+    down = E position: 'absolute', bottom: 10, left: 10, fontSize: 11, cursor: 'pointer'
+  up.setAttribute 'class', 'fa fa-caret-up'
+  down.setAttribute 'class', 'fa fa-caret-down'
+
+  bindEvent headerElement, 'mousemove', (e) ->
+    layerX = e.pageX - headerElement.getBoundingClientRect().left
+    unless layerX < 5 or layerX > header.width - 5 or sombodeyIsBeingDragged
+      setStyle span, color: '#5BC0DE'    
+      setStyle bottomBorder, height: 2
+    else
+      setStyle span, color: '#888'
+      setStyle bottomBorder, height: 0
+  events.mouseout headerElement, ->
+    setStyle span, color: '#888'
+    setStyle bottomBorder, height: 0
+
+  append element, headerElement
 
   getPlace = -> headers.slice(0, header.index).reduce ((left, {width}) -> left + width - 1), 0
 
@@ -79,7 +98,7 @@ addHeader = (header) ->
   place = getPlace()
   if isNew
     widthSpring header.width
-    xSpring place + header.width, 'goto'
+    xSpring (place + header.width), 'goto'
     xSpring place
   else
     widthSpring header.width, 'goto'
@@ -87,16 +106,17 @@ addHeader = (header) ->
 
   header.fixZIndex = ->
     setStyle element, zIndex: 1
-  header.putInPlace = ->
-    xSpring getPlace()
-  header.resize = (newWidth) ->
-    widthSpring newWidth
+  header.putInPlace = (immediate) ->
+    xSpring getPlace(), if immediate then 'goto'
+  header.resize = (newWidth, immediate) ->
+    widthSpring newWidth, if immediate then 'goto'
     header.width = newWidth
   header.destroy = ->
     destroy element
 
   down = null
-  bindEvent element, 'mousedown', ({pageX}) ->
+  bindEvent headerElement, 'mousedown', ({pageX}) ->
+    sombodeyIsBeingDragged = true
     setStyle element, zIndex: 1000
     headers.forEach (h) ->
       if h isnt header
@@ -116,7 +136,7 @@ addHeader = (header) ->
           place = i
         return end
       ), 0
-      if mouse >= totalWidth
+      if mouse >= tableWidth
         place = headers.length - 1
       victim = headers[place]
       return if victim is lastVictim
@@ -127,32 +147,48 @@ addHeader = (header) ->
         if h isnt header
           h.putInPlace?()
   events.mouseup(true) ->
+    sombodeyIsBeingDragged = false
     down = null
     downSpring 0
     header.putInPlace()
+
+  bindEvent element, 'mousemove', (e) ->
+    if e.layerX < 5 or e.layerX > header.width - 5
+      setStyle element, cursor: 'e-resize'
+      setStyle headerElement, cursor: 'e-resize'
+    else
+      setStyle element, cursor: 'default'
+      setStyle headerElement, cursor: 'move'
 
   append table, element
 
 removeHeader = (index) ->
   header = headers[index]
-  partialWidth = totalWidth - header.width
-  temp = 0
+  partialWidth = tableWidth - header.width
+  totalWidth = 0
   header.destroy?()
   headers.splice index, 1
   headers.forEach (header, i) ->
     if header.index > index
       header.index--
-    header.resize? if i < headers.length - 1 then header.width * totalWidth / partialWidth else totalWidth - temp
-    temp += header.width
+    header.resize? if i < headers.length - 1 then header.width * tableWidth / partialWidth else tableWidth - totalWidth + 1
+    totalWidth += header.width - 1
     header.putInPlace?()
 
-[1..10].forEach (x, i) ->
-  addHeader
-    name: x
-    width: 160 + (i - 5) * 20
+resizeTable = (newWidth) ->
+  return unless headers.length
+  totalWidth = 0
+  headers.slice(0, headers.length - 1).forEach (header) ->
+    header.resize? (header.width * newWidth / tableWidth), true
+    totalWidth += header.width - 1
+    header.putInPlace? true
+  tableWidth = newWidth
+  headers[headers.length - 1].resize? (tableWidth - totalWidth), true
+  headers[headers.length - 1].putInPlace? true
 
 module.exports = {
   element: table
   addHeader
   removeHeader
+  resizeTable
 }

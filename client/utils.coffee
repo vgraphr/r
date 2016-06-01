@@ -115,6 +115,12 @@ events = do ->
     maxY = rect.top + rect.height
     minX < e.pageX < maxX and minY < e.pageY < maxY
 
+  load: (callback) ->
+    bindEvent window, 'load', callback
+
+  resize: (callback) ->
+    bindEvent window, 'resize', callback
+
   mouseover: (element, callback) ->
     allreadyIn = false
     bindEvent document.body, 'mousemove', (e) ->
@@ -132,6 +138,10 @@ events = do ->
         allreadyOut = true
       else
         allreadyOut = false
+    bindEvent document.body, 'mouseout', (e) ->
+      from = e.relatedTarget || e.toElement
+      if !from || from.nodeName == "HTML"
+        callback e
 
   mousemove: (callback) ->
     bindEvent document.body, 'mousemove', callback
