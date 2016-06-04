@@ -4,6 +4,11 @@ tableStyle =
   display: 'block'
   width: '100%'
 
+columnStyle =
+  position: 'absolute'
+  height: 200
+  background: 'white'
+
 cellStyle =
   background: 'white'
   display: 'inline-block'
@@ -21,174 +26,228 @@ headerStyle = extend {}, cellStyle,
   left: 0
   right: 0
 
-headers = []
+headerSpanStyle =
+  position: 'absolute'
+  left: 30
+  right: 10
+  lineHeight: 40
+  overflow: 'hidden'
+  color: '#888'
+  transition: '0.15s'
 
-table = E tableStyle
+headerBottomBorderStyle = 
+  position: 'absolute'
+  bottom: -1
+  left: 0
+  right: 0
+  background: '#5BC0DE'
+  transition: '0.15s'
 
-sombodeyIsBeingDragged = false
+headerUpButtonStyle =
+  position: 'absolute'
+  left: 10
+  fontSize: 11
+  cursor: 'pointer'
+  top: 10
+  class: 'fa fa-caret-up'
 
-leftX = 0
-setTimeout -> leftX = table.getBoundingClientRect().left
+headerDownButtonStyle =
+  position: 'absolute'
+  left: 10
+  fontSize: 11
+  cursor: 'pointer'
+  bottom: 10
+  class: 'fa fa-caret-down'
 
-tableWidth = 100
+module.exports = ->
 
-addHeader = (headerOrHeaders, isBatch) ->
+  # table properties
+  leftX = 0
+  setTimeout -> leftX = table.getBoundingClientRect().left
 
-  if Array.isArray headerOrHeaders
-    return unless headerOrHeaders.length
-    headerOrHeaders[0].width = tableWidth - headerOrHeaders.slice(1).reduce ((totalWidth, {width}) -> totalWidth + width - 1), 0
-    headerOrHeaders.forEach (header) -> addHeader header, true
-    return
-
-  isNew = not isBatch
-  header = headerOrHeaders
-
-  if isNew
-    totalWidth = 0
-    headers.forEach (header) ->
-      header.resize? header.width * 0.9
-      totalWidth += header.width - 1
-      header.putInPlace?()
-    header.width = tableWidth - totalWidth + 1
-
-  header.index = headers.length
-
-  headers.push header
-
-  element = E position: 'absolute', height: 200, background: 'white'
-
-  headerElement = E headerStyle,
-    span = E position: 'absolute', left: 30, right: 10, lineHeight: 40, overflow: 'hidden', color: '#888', transition: '0.15s', header.name
-    bottomBorder = E position: 'absolute', bottom: -1, left: 0, right: 0, background: '#5BC0DE', transition: '0.15s'
-    up = E position: 'absolute', top: 10, left: 10, fontSize: 11, cursor: 'pointer'
-    down = E position: 'absolute', bottom: 10, left: 10, fontSize: 11, cursor: 'pointer'
-  up.setAttribute 'class', 'fa fa-caret-up'
-  down.setAttribute 'class', 'fa fa-caret-down'
-
-  bindEvent headerElement, 'mousemove', (e) ->
-    layerX = e.pageX - headerElement.getBoundingClientRect().left
-    unless layerX < 5 or layerX > header.width - 5 or sombodeyIsBeingDragged
-      setStyle span, color: '#5BC0DE'    
-      setStyle bottomBorder, height: 2
-    else
-      setStyle span, color: '#888'
-      setStyle bottomBorder, height: 0
-  events.mouseout headerElement, ->
-    setStyle span, color: '#888'
-    setStyle bottomBorder, height: 0
-
-  append element, headerElement
-
-  getPlace = -> headers.slice(0, header.index).reduce ((left, {width}) -> left + width - 1), 0
-
-  x = null
-  xSpring = spring [300, 50], (a) ->
-    x = a
-    setStyle element, left: x
-  downSpring = spring [300, 50], (a) ->
-    shadow = a * 16
-    scale = 1 + a * 0.1
-    setStyle element,
-      boxShadow: "rgba(0, 0, 0, 0.2) 0px #{shadow}px #{2 * shadow}px 0px"
-      transform: "scale(#{scale})"
-      WebkitTransform: "scale(#{scale})"
-  widthSpring = spring [300, 50], (width) ->
-    setStyle element, {width}
-
-  place = getPlace()
-  if isNew
-    widthSpring header.width
-    xSpring (place + header.width), 'goto'
-    xSpring place
-  else
-    widthSpring header.width, 'goto'
-    xSpring place, 'goto'
-
-  header.fixZIndex = ->
-    setStyle element, zIndex: 1
-  header.putInPlace = (immediate) ->
-    xSpring getPlace(), if immediate then 'goto'
-  header.resize = (newWidth, immediate) ->
-    widthSpring newWidth, if immediate then 'goto'
-    header.width = newWidth
-  header.destroy = ->
-    destroy element
-
-  down = null
-  bindEvent headerElement, 'mousedown', ({pageX}) ->
-    sombodeyIsBeingDragged = true
-    setStyle element, zIndex: 1000
-    headers.forEach (h) ->
-      if h isnt header
-        h.fixZIndex?()
-    down = delta: pageX - x, pressX: x
-    downSpring 1
-
+  # table state
+  tableWidth = 100
+  headerOs = []
+  sombodeyIsBeingDragged = false
+  mouseIsDown = false
   lastVictim = null
-  events.mousemove ({pageX}) ->
-    if down
-      xSpring pageX - down.delta, 'goto'
-      place = 0
-      mouse = pageX - leftX
-      headers.reduce ((start, {width}, i) ->
-        end = start + width
-        if start <= mouse < end
-          place = i
-        return end
-      ), 0
-      if mouse >= tableWidth
-        place = headers.length - 1
-      victim = headers[place]
-      return if victim is lastVictim
-      lastVictim = victim
-      reinsert headers, header.index, place
-      headers.forEach (h, index) ->
-        h.index = index
-        if h isnt header
-          h.putInPlace?()
-  events.mouseup(true) ->
-    sombodeyIsBeingDragged = false
+
+  # table element
+  table = E tableStyle
+
+  addColumn = (headerOOrHeaderOs, isBatch) ->
+
+    # handle Array
+    if Array.isArray headerOOrHeaderOs
+      return unless headerOOrHeaderOs.length
+      headerOOrHeaderOs[0].width = tableWidth - headerOOrHeaderOs.slice(1).reduce ((totalWidth, {width}) ->
+        totalWidth + width - 1), 0
+      headerOOrHeaderOs.forEach (headerO) ->
+        addColumn headerO, true
+      return
+
+    # column properties
+    isNew = not isBatch
+    headerO = headerOOrHeaderOs
+
+    # column state
     down = null
-    downSpring 0
-    header.putInPlace()
+    place = 0
 
-  bindEvent element, 'mousemove', (e) ->
-    if e.layerX < 5 or e.layerX > header.width - 5
-      setStyle element, cursor: 'e-resize'
-      setStyle headerElement, cursor: 'e-resize'
+    # column element
+    append table, columnE = E columnStyle,
+      headerE = E headerStyle,
+        spanE = E headerSpanStyle, headerO.title
+        bottomBorderE = E headerBottomBorderStyle
+        upE = E headerUpButtonStyle
+        downE = E headerDownButtonStyle
+
+    # column helpers
+    highlightHeader = ->
+      setStyle spanE, color: '#5BC0DE'    
+      setStyle bottomBorderE, height: 2
+    unhighlightHeader = ->
+      setStyle spanE, color: '#888'
+      setStyle bottomBorderE, height: 0
+    getPlace = ->
+      headerOs.slice(0, headerO.index).reduce ((left, {width}) -> left + width - 1), 0
+    mouseIsInDragLocation = (pageX) ->
+      layerX = pageX - headerE.getBoundingClientRect().left
+      layerX < 5 or layerX > headerO.width - 5
+
+    # column animations
+    xSpring = spring [300, 50], (x) ->
+      place = x
+      setStyle columnE, left: x
+    widthSpring = spring [300, 50], (width) ->
+      setStyle columnE, {width}
+    downSpring = spring [300, 50], (x) ->
+      shadow = x * 16
+      scale = 1 + x * 0.1
+      setStyle columnE,
+        boxShadow: "rgba(0, 0, 0, 0.2) 0px #{shadow}px #{2 * shadow}px 0px"
+        transform: "scale(#{scale})"
+        WebkitTransform: "scale(#{scale})"
+
+    # column initialization
+    if isNew
+      totalWidth = 0
+      headerOs.forEach (headerO) ->
+        headerO.resize? headerO.width * 0.9
+        totalWidth += headerO.width - 1
+        headerO.putInPlace?()
+      headerO.width = tableWidth - totalWidth + 1
+
+    headerO.index = headerOs.length
+
+    headerOs.push headerO
+
+    destination = getPlace()
+    if isNew
+      widthSpring headerO.width
+      xSpring (destination + headerO.width), 'goto'
+      xSpring destination
     else
-      setStyle element, cursor: 'default'
-      setStyle headerElement, cursor: 'move'
+      widthSpring headerO.width, 'goto'
+      xSpring destination, 'goto'
 
-  append table, element
+    # column methods
+    headerO.fixZIndex = ->
+      setStyle columnE, zIndex: 1
+    headerO.putInPlace = (immediate) ->
+      xSpring getPlace(), if immediate then 'goto'
+    headerO.resize = (newWidth, immediate) ->
+      widthSpring newWidth, if immediate then 'goto'
+      headerO.width = newWidth
+    headerO.destroy = ->
+      destroy columnE
 
-removeHeader = (index) ->
-  header = headers[index]
-  partialWidth = tableWidth - header.width
-  totalWidth = 0
-  header.destroy?()
-  headers.splice index, 1
-  headers.forEach (header, i) ->
-    if header.index > index
-      header.index--
-    header.resize? if i < headers.length - 1 then header.width * tableWidth / partialWidth else tableWidth - totalWidth + 1
-    totalWidth += header.width - 1
-    header.putInPlace?()
+    # column events
+    bindEvent headerE, 'mousemove', ({pageX}) ->
+      unless mouseIsDown or mouseIsInDragLocation pageX
+        highlightHeader()
+    events.mousemove ({pageX}) -> # NOTE: or mouse out     
+      if mouseIsDown or mouseIsInDragLocation pageX
+        unhighlightHeader()
+    events.mouseout headerE, unhighlightHeader
+    bindEvent document.body, 'mousedown', ->
+      mouseIsDown = true
+      unhighlightHeader()
 
-resizeTable = (newWidth) ->
-  return unless headers.length
-  totalWidth = 0
-  headers.slice(0, headers.length - 1).forEach (header) ->
-    header.resize? (header.width * newWidth / tableWidth), true
-    totalWidth += header.width - 1
-    header.putInPlace? true
-  tableWidth = newWidth
-  headers[headers.length - 1].resize? (tableWidth - totalWidth), true
-  headers[headers.length - 1].putInPlace? true
+    bindEvent columnE, 'mousemove', ({pageX}) ->
+      if mouseIsInDragLocation pageX
+        setStyle columnE, cursor: 'e-resize'
+        setStyle headerE, cursor: 'e-resize'
+      else
+        setStyle headerE, cursor: 'move'
+        unless down
+          setStyle columnE, cursor: 'default'
 
-module.exports = {
-  element: table
-  addHeader
-  removeHeader
-  resizeTable
-}
+    bindEvent headerE, 'mousedown', ({pageX}) ->
+      sombodeyIsBeingDragged = true
+      setStyle columnE, cursor: 'move', zIndex: 1000
+      headerOs.forEach (ho) ->
+        if ho isnt headerO
+          ho.fixZIndex?()
+      down = delta: pageX - place, pressX: place
+      downSpring 1
+
+    events.mousemove ({pageX}) ->
+      if down
+        xSpring pageX - down.delta, 'goto'
+        place = 0
+        mouse = pageX - leftX
+        headerOs.reduce ((start, {width}, i) ->
+          end = start + width
+          if start <= mouse < end
+            place = i
+          return end
+        ), 0
+        if mouse >= tableWidth
+          place = headerOs.length - 1
+        victim = headerOs[place]
+        return if victim is lastVictim
+        lastVictim = victim
+        reinsert headerOs, headerO.index, place
+        headerOs.forEach (ho, index) ->
+          ho.index = index
+          if ho isnt headerO
+            ho.putInPlace?()
+    events.mouseup(true) ->
+      sombodeyIsBeingDragged = false
+      setStyle columnE, cursor: 'default'
+      mouseIsDown = false
+      down = null
+      downSpring 0
+      headerO.putInPlace()
+
+  removeColumn = (index) ->
+    headerO = headerOs[index]
+    partialWidth = tableWidth - headerO.width
+    totalWidth = 0
+    headerO.destroy?()
+    headerOs.splice index, 1
+    headerOs.forEach (headerO, i) ->
+      if headerO.index > index
+        headerO.index--
+      headerO.resize? if i < headerOs.length - 1 then headerO.width * tableWidth / partialWidth else tableWidth - totalWidth + 1
+      totalWidth += headerO.width - 1
+      headerO.putInPlace?()
+
+  resizeTable = (newWidth) ->
+    return unless headerOs.length
+    totalWidth = 0
+    headerOs.slice(0, headerOs.length - 1).forEach (headerO) ->
+      headerO.resize? (headerO.width * newWidth / tableWidth), true
+      totalWidth += headerO.width - 1
+      headerO.putInPlace? true
+    tableWidth = newWidth
+    headerOs[headerOs.length - 1].resize? (tableWidth - totalWidth), true
+    headerOs[headerOs.length - 1].putInPlace? true
+
+  return {
+    table
+    addColumn
+    removeColumn
+    resizeTable
+  }

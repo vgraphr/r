@@ -16,18 +16,20 @@ module.exports = ->
   header = E 'img', width: '100%'
   header.setAttribute 'src', '/assets/header.png'
 
+  tableInsance = table()
+
   border = E borderStyle,
-    table.element
+    tableInsance.table
     name  = E 'input', top: 300
     add   = E 'input', top: 300
 
-  table.addHeader [1..5].map (x, i) ->
-    name: x
+  tableInsance.addColumn [1..5].map (x, i) ->
+    title: x
     width: 10 + 5 * i
 
   resizeCallback = ->
     setTimeout ->
-      table.resizeTable border.offsetWidth - 4
+      tableInsance.resizeTable border.offsetWidth - 4
 
   events.load resizeCallback
   events.resize resizeCallback
@@ -36,7 +38,7 @@ module.exports = ->
   add.setAttribute 'type', 'button'
   add.setAttribute 'value', 'add'
   bindEvent add, 'click', ->
-    table.addHeader name: name.value
+    tableInsance.addHeader name: name.value
 
   append [header, border]
 

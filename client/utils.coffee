@@ -73,11 +73,17 @@ pxToNum = (val) -> +val.substr 0, val.length - 2
 setStyle = (element, style = {}) ->
   Object.keys(style).forEach (key) ->
     val = style[key]
-    if key is 'text'
-      element.innerText = val
-    else
-      val = Math.floor(val) + 'px' if (typeof val is 'number') and not (key in ['opacity', 'zIndex'])
-      element.style[key] = val
+    switch key
+      when 'text'
+        element.innerText = val
+      when 'class'
+        element.setAttribute 'class', val
+      when 'type'
+        element.setAttribute 'type', val
+      else
+        if (typeof val is 'number') and not (key in ['opacity', 'zIndex'])
+          val = Math.floor(val) + 'px' 
+        element.style[key] = val
 
 E = do ->
   e = (tagName, style, children...) ->
