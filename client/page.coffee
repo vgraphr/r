@@ -20,8 +20,8 @@ module.exports = ->
 
   border = E borderStyle,
     tableInsance.table
-    name  = E 'input', top: 300
-    add   = E 'input', top: 300
+    name  = E 'input', placeholder: 'name', top: 300
+    add   = E 'input', type: 'button', value: 'add', top: 300
 
   tableInsance.addColumn [1..5].map (x, i) ->
     title: x
@@ -30,15 +30,13 @@ module.exports = ->
   resizeCallback = ->
     setTimeout ->
       tableInsance.resizeTable border.offsetWidth - 4
-
   events.load resizeCallback
   events.resize resizeCallback
+  if module.hot
+    resizeCallback()
 
-  name.setAttribute 'placeholder', 'name'
-  add.setAttribute 'type', 'button'
-  add.setAttribute 'value', 'add'
   bindEvent add, 'click', ->
-    tableInsance.addHeader name: name.value
+    tableInsance.addColumn title: name.value
 
   append [header, border]
 

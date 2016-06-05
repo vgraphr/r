@@ -73,17 +73,14 @@ pxToNum = (val) -> +val.substr 0, val.length - 2
 setStyle = (element, style = {}) ->
   Object.keys(style).forEach (key) ->
     val = style[key]
-    switch key
-      when 'text'
-        element.innerText = val
-      when 'class'
-        element.setAttribute 'class', val
-      when 'type'
-        element.setAttribute 'type', val
-      else
-        if (typeof val is 'number') and not (key in ['opacity', 'zIndex'])
-          val = Math.floor(val) + 'px' 
-        element.style[key] = val
+    if key is 'text'
+      element.innerText = val
+    else if key in ['class', 'type', 'value', 'placeholder']
+      element.setAttribute key, val
+    else
+      if (typeof val is 'number') and not (key in ['opacity', 'zIndex'])
+        val = Math.floor(val) + 'px' 
+      element.style[key] = val
 
 E = do ->
   e = (tagName, style, children...) ->
@@ -113,13 +110,13 @@ E = do ->
       e.apply null, args
 
 events = do ->
-  isIn = (element, e) ->
+  isIn = (element, {pageX, pageY}) ->
     rect = element.getBoundingClientRect()
     minX = rect.left
     maxX = rect.left + rect.width
-    minY = rect.top
-    maxY = rect.top + rect.height
-    minX < e.pageX < maxX and minY < e.pageY < maxY
+    minY = rect.top + window.scrollY
+    maxY = rect.top + window.scrollY + rect.height
+    minX < pageX < maxX and minY < pageY < maxY
 
   load: (callback) ->
     bindEvent window, 'load', callback
@@ -149,16 +146,12 @@ events = do ->
       if !from || from.nodeName == "HTML"
         callback e
 
-  mousemove: (callback) ->
-    bindEvent document.body, 'mousemove', callback
-
-  mouseup: (handleOut) -> (callback) ->
+  mouseup: (callback) ->
     bindEvent document.body, 'mouseup', callback
-    if handleOut
-      bindEvent document.body, 'mouseout', (e) ->
-        from = e.relatedTarget || e.toElement
-        if !from || from.nodeName == "HTML"
-          callback e
+    bindEvent document.body, 'mouseout', (e) ->
+      from = e.relatedTarget || e.toElement
+      if !from || from.nodeName == "HTML"
+        callback e
 
 animation = (rawCallback, wrapCallback) ->
   
@@ -204,7 +197,7 @@ spring = ([k, m], rawCallback) ->
   callback = (x) ->
     unless lastX is x
       lastX = x
-      rawCallback x, (start, end) -> start + (end - start) * x
+      rawCallback x, running, (start, end) -> start + (end - start) * x
     
   x = xRest = 0
   v = 0
