@@ -28,6 +28,7 @@ module.exports = ->
   tableWidth = 100
   headerOs = []
   lastVictim = null
+  resizeDown = null
 
   # table events
   events.mouseup ->
@@ -58,7 +59,6 @@ module.exports = ->
 
     # column state
     dragDown = null
-    resizeDown = null
     place = 0 #, headerO.width
     isDrifting = false
     borderHighlighted = false
@@ -177,12 +177,15 @@ module.exports = ->
       if not isDrifting and side = cursorSide pageX        
         switch side
           when 1
+            return if headerO.index is 0
             leftWidth = headerOs[headerO.index - 1]?.width
             rightWidth = headerO.width
           when 2
+            return if headerO.index is headerOs.length - 1
             leftWidth = headerO.width
             rightWidth = headerOs[headerO.index + 1]?.width
         resizeDown = {headerO, pageX, side, leftWidth, rightWidth}
+        console.log resizeDown
 
     bindEvent document.body, 'mousemove', ({pageX}) ->
       if mouseIsDown or cursorSide pageX
@@ -190,7 +193,7 @@ module.exports = ->
 
       borderHighlighted = false
       setTimeout ->
-        unless borderHighlighted
+        unless borderHighlighted or (resizeDown and ((resizeDown.side is 1 and (resizeDown.headerO.index is headerO.index)) or (resizeDown.side is 2 and (resizeDown.headerO.index is headerO.index - 1))))
           setStyle borderE, borderStyle
 
       if dragDown
@@ -215,7 +218,7 @@ module.exports = ->
           if ho isnt headerO
             ho.putInPlace?()
 
-      else if resizeDown
+      else if resizeDown?.headerO is headerO
         minimumColumnWidth = 60
         switch resizeDown.side
           when 1
