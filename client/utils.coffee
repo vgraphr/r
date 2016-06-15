@@ -1,6 +1,53 @@
+`
+var isOpera = !!window.opera || navigator.userAgent.indexOf(' OPR/') >= 0;
+    // Opera 8.0+ (UA detection to detect Blink/v8-powered Opera)
+var isFirefox = typeof InstallTrigger !== 'undefined';   // Firefox 1.0+
+var isSafari = Object.prototype.toString.call(window.HTMLElement).indexOf('Constructor') > 0;
+    // At least Safari 3+: "[object HTMLElementConstructor]"
+var isChrome = !!window.chrome && !isOpera;              // Chrome 1+
+var isIE = /*@cc_on!@*/false || !!document.documentMode; // At least IE6
+`
+isOpera   = isOpera
+isFirefox = isFirefox
+isSafari  = isSafari
+isChrome  = isChrome
+isIE      = isIE
+isEdge    = (navigator.appName is 'Netscape') and navigator.appVersion.indexOf('Trident') is -1
+
+createCookie = (name, value, days) ->
+  if days
+    date = new Date()
+    date.setTime +date + (days * 24 * 60 * 60 * 1000)
+    expires = "; expires=#{date.toGMTString()}"
+  else
+    expires = ''
+  document.cookie = "#{name}=#{value}#{expires}; path=/"
+
+readCookie = (name) ->
+  nameEQ = "#{name}="
+  resultArray = document.cookie.split ';'
+  .map (c) ->
+    while c.charAt(0) is ' '
+      c = c.substring 1, c.length
+    c
+  .filter (c) ->
+    c.indexOf(nameEQ) is 0
+  [result] = resultArray
+  result?.substring nameEQ.length
+
+eraseCookie = (name) ->
+  createCookie name, '', -1
+
 generateId = do ->
   i = 0
   -> i++
+
+without = (array, item) ->
+  index = array.indexOf item
+  result = array.slice()
+  if ~index
+    result.splice index, 1
+  result
 
 extend = (target, sources...) ->
   sources.forEach (source) ->
@@ -64,23 +111,73 @@ append = ->
     element.forEach (element) ->
       append parent, element
   else
-    parent.appendChild element
+    if element
+      parent.appendChild element
 
 destroy = (element) -> element.parentNode.removeChild element
+
+empty = (element) ->
+  while element.children?.length
+    destroy element.children[0]
 
 pxToNum = (val) -> +val.substr 0, val.length - 2
 
 setStyle = (element, style = {}) ->
+  if Array.isArray element
+    return element.forEach (element) -> setStyle element, style
   Object.keys(style).forEach (key) ->
     val = style[key]
     if key is 'text'
-      element.innerText = val
-    else if key in ['class', 'type', 'value', 'placeholder']
+      if isFirefox
+        element.innerHTML = val
+      else
+        element.innerText = val
+    else if key is 'value'
+      element.value = val
+      element.dispatchEvent new Event 'input'
+    else if key in ['class', 'type', 'placeholder', 'id', 'for']
       element.setAttribute key, val
     else
       if (typeof val is 'number') and not (key in ['opacity', 'zIndex'])
         val = Math.floor(val) + 'px' 
       element.style[key] = val
+  return element
+
+addClass = (element, klass) ->
+  element.setAttribute 'class', ((element.getAttribute('class') ? '') + ' ' + klass).replace(/\ +/g, ' ').trim()
+  return element
+
+removeClass = (element, klass) ->
+  previousClass = (element.getAttribute 'class') ? ''
+  classIndex = previousClass.indexOf klass
+  if ~classIndex
+    element.setAttribute 'class', ((previousClass.substr 0, classIndex) + (previousClass.substr classIndex + klass.length)).replace(/\ +/g, ' ').trim()
+  return element
+
+show = (element) ->
+  if Array.isArray element
+    return element.map (element) -> show element
+  removeClass element, 'hidden'
+  return element
+
+hide = (element) ->
+  if Array.isArray element
+    return element.map (element) -> hide element
+  removeClass element, 'hidden'
+  addClass element, 'hidden'
+  return element
+
+enable = (element) ->
+  if Array.isArray element
+    return element.map (element) -> enable element
+  element.removeAttribute 'disabled'
+  return element
+
+disable = (element) ->
+  if Array.isArray element
+    return element.map (element) -> disable element
+  element.setAttribute 'disabled', 'disabled'
+  return element
 
 E = do ->
   e = (tagName, style, children...) ->
@@ -247,8 +344,56 @@ spring = ([k, m], rawCallback) ->
         lastTime = performance.now()
         requestAnimationFrame animate
 
+numberInput = (style) ->
+  input = E 'input', style
+  prevValue = ''
+  handler = ->
+    value = input.value
+    if /^[0-9]*$/.test toEnglish value
+      prevValue = value
+    else
+      value = prevValue
+    input.value = toPersian value
+  bindEvent input, 'input', handler
+  return input
+
+collection = (add, destroy, change) ->
+  data = []
+  (newData) ->
+    if newData.length > data.length
+      if data.length
+        [0 .. data.length - 1].forEach (i) ->
+          data[i] = change newData[i], data[i]
+      [data.length .. newData.length - 1].forEach (i) ->
+        data[i] = add newData[i]
+    else if data.length > newData.length
+      if newData.length
+        [0 .. newData.length - 1].forEach (i) ->
+          data[i] = change newData[i], data[i]
+      while data.length > newData.length
+        destroy data[data.length - 1]
+        data.splice (data.length - 1), 1
+    else if data.length
+      [0 .. data.length - 1].forEach (i) ->
+        data[i] = change newData[i], data[i]
+
+
+emailIsValid = (email) -> /^.+@.+\..+$/.test email
+
+passwordIsValid = (password) -> password.length >= 6
+
 module.exports = {
+  isOpera
+  isFirefox
+  isSafari
+  isChrome
+  isIE
+  isEdge
+  createCookie
+  readCookie
+  eraseCookie
   generateId
+  without
   extend
   reinsert
   toEnglish
@@ -259,9 +404,20 @@ module.exports = {
   pxToNum
   E
   setStyle
+  addClass
+  removeClass
+  show
+  hide
+  enable
+  disable
   append
   destroy
+  empty
   events
   animation
   spring
+  numberInput
+  collection
+  emailIsValid
+  passwordIsValid
 }

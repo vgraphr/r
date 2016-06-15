@@ -13,6 +13,8 @@ tableStylePage = require './tableStyle'
   headerHoverSpanStyle
   headerHoverBottomBorderStyle
   borderHoverColor
+  columnDataStyle
+  columnChangeStyle
 } = tableStylePage 
 
 module.exports = ->
@@ -38,11 +40,9 @@ module.exports = ->
     # handle Array
     if Array.isArray headerOOrHeaderOs
       return unless headerOOrHeaderOs.length
-      headerOOrHeaderOs[0].width = Math.floor tableWidth - headerOOrHeaderOs.slice(1).reduce ((totalWidth, {width}) ->
-        totalWidth + width - 1), 0
-      headerOOrHeaderOs.forEach (headerO) ->
+      headerOOrHeaderOs[0].width = Math.floor tableWidth - headerOOrHeaderOs.slice(1).reduce ((totalWidth, {width}) -> totalWidth + width - 1), 0
+      return headerOOrHeaderOs.map (headerO) ->
         addColumn headerO, true
-      return
 
     # column properties
     isNew = not isBatch
@@ -56,6 +56,8 @@ module.exports = ->
           bottomBorderE = E headerBottomBorderStyle
           upE = E headerUpButtonStyle
           downE = E headerDownButtonStyle
+        changeE = E columnChangeStyle
+        dataE= E columnDataStyle
 
     # column state
     dragDown = null
@@ -185,7 +187,6 @@ module.exports = ->
             leftWidth = headerO.width
             rightWidth = headerOs[headerO.index + 1]?.width
         resizeDown = {headerO, pageX, side, leftWidth, rightWidth}
-        console.log resizeDown
 
     bindEvent document.body, 'mousemove', ({pageX}) ->
       if mouseIsDown or cursorSide pageX
@@ -249,6 +250,14 @@ module.exports = ->
         headerO.putInPlace()
       if resizeDown?.headerO is headerO
         resizeDown = null
+
+    addData: (data) ->
+      append dataE, dataRowE = E null, data
+      return dataRowE
+    changeMode: ->
+      setStyle changeE, height: 10, lineHeight: 10
+    defaultMode: ->
+      setStyle changeE, height: 0, lineHeight: 0
 
   removeColumn = (index) ->
     headerO = headerOs[index]

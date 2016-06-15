@@ -7,8 +7,11 @@ borderStyle =
   background: 'white'
   border: '2px solid #AAA'
   borderRadius: 5
-  padding: '50px 0'
   height: 500
+
+toolbarStyle =
+  marginTop: 65
+  height: 50
 
 module.exports = ->
   setStyle document.body, background: '#F5F5F5'
@@ -19,13 +22,30 @@ module.exports = ->
   tableInsance = table()
 
   border = E borderStyle,
+    E toolbarStyle,
+      timeE = E position: 'absolute', color: '#888', cursor: 'pointer', top: 5, left: 60, class: 'fa fa-calendar'
+      searchE = E position: 'absolute', color: '#888', cursor: 'pointer', top: 5, left: 105, class: 'fa fa-search'
+      changeE = E position: 'absolute', color: '#888', cursor: 'pointer', top: 5, left: 150, class: 'fa fa-arrows-alt'
     tableInsance.table
-    name  = E 'input', placeholder: 'name', top: 300
-    add   = E 'input', type: 'button', value: 'add', top: 300
 
-  tableInsance.addColumn [1..5].map (x, i) ->
+  columns = tableInsance.addColumn [1..5].map (x, i) ->
     title: x
     width: 10 + 5 * i
+
+  columns.forEach (column) ->
+    column.addData 'lorem'
+    column.addData 'ipsum'
+    column.addData 'dolor'
+    column.addData 'sit'
+    column.addData 'amet'
+
+  isChangeMode = false
+  bindEvent changeE, 'click', ->
+    if isChangeMode
+      columns.forEach (column) -> column.defaultMode()
+    else
+      columns.forEach (column) -> column.changeMode()
+    isChangeMode = not isChangeMode
 
   resizeCallback = ->
     setTimeout ->
@@ -34,9 +54,6 @@ module.exports = ->
   events.resize resizeCallback
   if module.hot
     resizeCallback()
-
-  bindEvent add, 'click', ->
-    tableInsance.addColumn title: name.value
 
   append [header, border]
 

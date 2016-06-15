@@ -76,3 +76,24 @@ exports.headerHoverBottomBorderStyle =
   height: 2
 
 exports.borderHoverColor = '1px solid #5BC0DE'
+
+exports.columnDataStyle =
+  position: 'absolute'
+  top: 50
+  left: 0
+  right: 10
+
+exports.columnChangeStyle =
+  position: 'absolute'
+  top: 40
+  left: -1
+  right: -1
+  class: 'fa fa-angle-down'
+  textAlign: 'center'
+  overflow: 'hidden'
+  background: '#BBB'
+  color: 'white'
+  zIndex: 10
+  height: 0
+  lineHeight: 0
+  transition: '0.15s'
