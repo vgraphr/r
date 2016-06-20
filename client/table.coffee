@@ -1,4 +1,4 @@
-{reinsert, E, append, destroy, events, bindEvent, setStyle, spring, animation} = require './utils'
+{reinsert, E, append, destroy, events, bindEvent, setStyle, spring, animation, extend, empty} = require './utils'
 tableStylePage = require './tableStyle'
 {
   tableStyle
@@ -15,6 +15,10 @@ tableStylePage = require './tableStyle'
   borderHoverColor
   columnDataStyle
   columnChangeStyle
+  columnChangeListStyle
+  columnChangeBackStyle
+  columnDeleteStyle
+  columnListItemStyle
 } = tableStylePage 
 
 module.exports = ->
@@ -57,9 +61,13 @@ module.exports = ->
           upE = E headerUpButtonStyle
           downE = E headerDownButtonStyle
         changeE = E columnChangeStyle
-        dataE= E columnDataStyle
+        changeListE = E columnChangeListStyle,
+          deleteE = E columnDeleteStyle, 'حذف ستون'
+        dataE = E columnDataStyle
 
     # column state
+    listItems = []
+    listIsOpen = false
     dragDown = null
     place = 0 #, headerO.width
     isDrifting = false
@@ -103,7 +111,7 @@ module.exports = ->
         headerO.resize? headerO.width * 0.9
         totalWidth += headerO.width - 1
         headerO.putInPlace?()
-      headerO.width = Math.floor tableWidth - totalWidth + 1
+      headerO.width = Math.floor tableWidth - totalWidth
 
     headerO.index = headerOs.length
 
@@ -138,6 +146,18 @@ module.exports = ->
           setStyle borderE, borderRight: borderHoverColor
 
     # column events
+    bindEvent changeE, 'click', ->
+      if listIsOpen
+        setStyle changeE, extend {}, columnChangeStyle, height: 10, lineHeight: 10
+        setStyle changeListE, columnChangeListStyle
+      else
+        setStyle changeE, columnChangeBackStyle
+        setStyle changeListE, opacity: 1, visibility: 'visible'
+      listIsOpen = not listIsOpen
+
+    bindEvent deleteE, 'click', ->
+      removeColumn headerO.index
+
     bindEvent headerE, 'mousemove', ({pageX}) ->
       unless mouseIsDown or cursorSide pageX
         highlightHeader()
@@ -149,6 +169,7 @@ module.exports = ->
       unhighlightHeader()
 
     bindEvent columnE, 'mousemove', ({pageX}) ->
+      return if resizeDown
       if side = cursorSide pageX
         unless (side is 1 and headerO.index is 0) or (side is 2 and headerO.index is headerOs.length - 1) 
           setStyle columnE, cursor: 'e-resize'
@@ -168,6 +189,7 @@ module.exports = ->
 
     bindEvent headerE, 'mousedown', ({pageX}) ->
       unless cursorSide pageX
+        setStyle document.body, cursor: 'move'
         setStyle columnE, cursor: 'move', zIndex: 1000
         headerOs.forEach (ho) ->
           if ho isnt headerO
@@ -176,7 +198,8 @@ module.exports = ->
         downSpring 1
 
     bindEvent columnE, 'mousedown', ({pageX}) ->
-      if not isDrifting and side = cursorSide pageX        
+      if not isDrifting and side = cursorSide pageX
+        setStyle document.body, cursor: 'e-resize'
         switch side
           when 1
             return if headerO.index is 0
@@ -243,7 +266,9 @@ module.exports = ->
         rightHeaderO.putInPlace true
 
     events.mouseup ->
+      setStyle document.body, cursor: 'default'
       if dragDown?.headerO is headerO
+        # headerO.fixZIndex()
         setStyle columnE, cursor: 'default'
         dragDown = null
         downSpring 0
@@ -252,12 +277,24 @@ module.exports = ->
         resizeDown = null
 
     addData: (data) ->
-      append dataE, dataRowE = E null, data
+      if typeof data is 'string'
+        dataRowE = E null, data
+      else
+        dataRowE = data
+      append dataE, dataRowE
       return dataRowE
+    setListItems: (items) ->
+      listItems = items
+      empty changeListE
+      append changeListE, items.map (item) ->
+        E columnListItemStyle, item
+      append changeListE, deleteE
     changeMode: ->
       setStyle changeE, height: 10, lineHeight: 10
     defaultMode: ->
-      setStyle changeE, height: 0, lineHeight: 0
+      listIsOpen = false
+      setStyle changeE, columnChangeStyle
+      setStyle changeListE, columnChangeListStyle
 
   removeColumn = (index) ->
     headerO = headerOs[index]
@@ -268,7 +305,7 @@ module.exports = ->
     headerOs.forEach (headerO, i) ->
       if headerO.index > index
         headerO.index--
-      headerO.resize? if i < headerOs.length - 1 then headerO.width * tableWidth / partialWidth else tableWidth - totalWidth + 1
+      headerO.resize? if i < headerOs.length - 1 then headerO.width * tableWidth / partialWidth else tableWidth - totalWidth
       totalWidth += headerO.width - 1
       headerO.putInPlace?()
 

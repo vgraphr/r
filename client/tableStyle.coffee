@@ -94,6 +94,44 @@ exports.columnChangeStyle =
   background: '#BBB'
   color: 'white'
   zIndex: 10
+  cursor: 'pointer'
+  transition: '0.15s'
   height: 0
   lineHeight: 0
+
+exports.columnChangeListStyle =
+  position: 'absolute'
+  minWidth: 170
+  top: 50
+  background: 'white'
+  boxShadow: 'rgba(0, 0, 0, 0.2) 0px 16px 32px 0px'
+  borderRadius: '0 0 5px 5px'
+  zIndex: 9999
   transition: '0.15s'
+  opacity: 0
+  visibility: 'hidden'
+
+exports.columnChangeBackStyle = extend {}, exports.columnChangeStyle,
+  class: 'fa fa-angle-up'
+  background: 'white'
+  color: 'black'
+  height: 10
+  lineHeight: 10
+
+exports.columnDeleteStyle =
+  background: '#D9534F'
+  color: 'white'
+  position: 'absolute'
+  bottom: 0
+  left: 0
+  right: 0
+  height: 35
+  lineHeight: 35
+  textAlign: 'center'
+  borderRadius: '0 0 5px 5px'
+  cursor: 'pointer'
+
+exports.columnListItemStyle =
+  padding: '5px 15px 5px 80px'
+  color: '#888'
+  cursor: 'pointer'
