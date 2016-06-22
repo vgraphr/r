@@ -11,7 +11,6 @@ unless module.dynamic
   request = req 'request'
 
   Q.longStackSupport = true
-  exports.Q = Q
 
   app = express()
   server = http.Server app
@@ -47,6 +46,8 @@ unless module.dynamic
 else
 
   {Q, http, express, app, request} = module._data
+
+exports.Q = Q
 
 exports.jalaali = do ->
   toJalaali = (gy, gm, gd) -> d2j(g2d(gy, gm, gd))
@@ -182,23 +183,9 @@ handle = (methodName) -> (route, handler) ->
     app._router.stack.splice app._router.stack.indexOf(appRoute), 1
   app[methodName] route, (req, res) ->
     Q().then ->
-      if req.cookies?.user?
-        try
-          req.user = jwt.verify req.cookies.encodedUser, jwtSecret
-        catch
-          req.loggedOut = true
       handler req
     .then (response) ->
-      if response?.setUser?
-        response.setCookies = [{name: 'user', value: JSON.stringify response.setUser}
-                               {name: 'encodedUser', value: jwt.sign response.setUser, jwtSecret, jwtOptions}]
-      else if req.loggedOut?
-        throw loggedOut: true
-      response?.setCookies?.forEach (cookie) ->
-        res.cookie cookie.name, cookie.value
-      delete response.setUser
-      delete response.setCookies
-      res.json if methodName is 'get' then response else null
+      res.json response
     .catch (err) ->
       console.log 'Error: ' + route + ': ' + err
       try

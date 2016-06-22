@@ -2,17 +2,16 @@ Q = require './q'
 state = require './state'
 utils = require './utils'
 
-handle = (isGet, url, params = {}) ->
+handle = (isGet) -> (url, params = {}) -> 
   url = "/#{url}?rand=#{Math.random()}&"
-  if isGet
-    url += Object.keys(params).map((param) -> "#{param}=#{params[param]}").join '&'
+  url += Object.keys(params).map((param) -> "#{param}=#{params[param]}").join('&') if isGet
+  prevUser = state.user.get()
   Q.promise (resolve, reject) ->
     xhr = new XMLHttpRequest()
     xhr.onreadystatechange = ->
       if xhr.readyState is 4
         if xhr.status is 200
-          response = JSON.parse xhr.responseText
-          resolve response
+          resolve JSON.parse xhr.responseText
         else
           reject xhr.responseText
     methodType = if isGet then 'GET' else 'POST'
@@ -21,11 +20,11 @@ handle = (isGet, url, params = {}) ->
       xhr.send()
     else
       xhr.setRequestHeader 'Content-Type', 'application/json'
-      xhr.send JSON.stringify params      
+      xhr.send JSON.stringify params    
   .catch (x) -> throw JSON.parse x
 
-get = handle.bind null, true
-post = handle.bind null, false
+get = exports.get = (args...) -> handle(true) args...
+post = exports.post = (args...) -> handle(false) args...
 
 changableDelay = ->
   defer = Q.defer()

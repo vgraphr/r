@@ -1,9 +1,25 @@
-{get, post, requestGet} = require './utils'
+{get, post, requestGet, Q} = require './utils'
+
+sidQ = Q()
+setSidQ = ->
+  sidQ = requestGet 'http://10.20.19.203:8080/dashboardpage'
+  .then (res) ->
+    sid = res.headers['set-cookie'][0]
+    sid = sid.substr 0, sid.indexOf ';'
+    sid = sid.substr 11
+    QAll [sid, requestGet res.headers.location]
+  .then ([sid]) ->
+    Q.all [
+      sid
+      post "http://10.20.19.203:8080/login;jsessionid=#{sid}?1-1.IFormSubmitListener-loginPanel-loginForm",
+        email: 'admin@maxa.ir', password: 'runner'
+    ]
+  .then ([sid]) ->
+    sid
+# setInterval setSidQ, 10 * 60 * 1000
 
 get 'alerts', ->
-  requestGet 'http://10.20.19.203:8080/api/webApi/alerts?page=1&size=555'
+  sidQ.then ->
+    requestGet 'http://10.20.19.203:8080/api/webApi/test'
   .then (x) ->
-    try
-      JSON.parse x[0].body
-    catch
-      []
+    JSON.parse x[0].body
