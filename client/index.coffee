@@ -1,5 +1,4 @@
 {addPageCSS, addPageStyle, setStyle, destroy} = require './utils'
-page = require './page'
 
 if module.dynamic
   prevOnerror = window.onerror
@@ -39,8 +38,14 @@ else
   "
   document.title = 'رصد'
 
-do render = ->
-  page()
+page = require './page'
+service = require './service'
+state = require './state'
+
+page()
+['alerts'].forEach (key) ->
+  service.keepFresh key, (data) ->
+    state[key].set data
 
 if module.dynamic
   unsubscribers = [

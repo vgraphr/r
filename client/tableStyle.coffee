@@ -6,7 +6,6 @@ exports.tableStyle =
 
 exports.columnStyle =
   position: 'absolute'
-  height: 200
   background: 'white'
   borderLeft: '1px dashed #EEE'
   borderRight: '1px dashed #EEE'
@@ -34,6 +33,7 @@ exports.headerStyle = extend {}, exports.cellStyle,
   color: '#888'
   left: 0
   right: 0
+  overflow: 'hidden'
 
 exports.headerSpanStyle =
   position: 'absolute'
@@ -82,6 +82,9 @@ exports.columnDataStyle =
   top: 50
   left: 0
   right: 10
+  overflow: 'hidden'
+  transition: '0.15s'
+  marginTop: 0
 
 exports.columnChangeStyle =
   position: 'absolute'
@@ -98,6 +101,7 @@ exports.columnChangeStyle =
   transition: '0.15s'
   height: 0
   lineHeight: 0
+  opacity: 0
 
 exports.columnChangeListStyle =
   position: 'absolute'
@@ -105,7 +109,6 @@ exports.columnChangeListStyle =
   top: 50
   background: 'white'
   boxShadow: 'rgba(0, 0, 0, 0.2) 0px 16px 32px 0px'
-  borderRadius: '0 0 5px 5px'
   zIndex: 9999
   transition: '0.15s'
   opacity: 0
@@ -117,12 +120,13 @@ exports.columnChangeBackStyle = extend {}, exports.columnChangeStyle,
   color: 'black'
   height: 10
   lineHeight: 10
+  opacity: 1
 
 exports.columnDeleteStyle =
   background: '#D9534F'
   color: 'white'
   position: 'absolute'
-  bottom: 0
+  bottom: -35
   left: 0
   right: 0
   height: 35
@@ -135,3 +139,27 @@ exports.columnListItemStyle =
   padding: '5px 15px 5px 80px'
   color: '#888'
   cursor: 'pointer'
+
+exports.columnSearchStyle = 
+  position: 'absolute'
+  top: 40
+  left: -1
+  right: -1
+  textAlign: 'center'
+  overflow: 'hidden'
+  background: 'white'
+  zIndex: 10
+  transition: '0.15s'
+  height: 0
+  lineHeight: 0
+  borderBottom: '1px solid #5BC0DE'
+  opacity: 0
+
+exports.columnSearchboxStyle =
+  border: '1px solid #DDD'
+  position: 'absolute'
+  width: '90%'
+  top: 5
+  bottom: 5
+  left: '5%'
+  right: '5%'

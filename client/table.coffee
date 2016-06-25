@@ -19,6 +19,8 @@ tableStylePage = require './tableStyle'
   columnChangeBackStyle
   columnDeleteStyle
   columnListItemStyle
+  columnSearchStyle
+  columnSearchboxStyle
 } = tableStylePage 
 
 module.exports = ->
@@ -35,6 +37,7 @@ module.exports = ->
   headerOs = []
   lastVictim = null
   resizeDown = null
+  headerDescriptors = undefined
 
   # table events
   events.mouseup ->
@@ -43,30 +46,40 @@ module.exports = ->
   addColumn = (headerOOrHeaderOs, isBatch) ->
     # handle Array
     if Array.isArray headerOOrHeaderOs
-      return unless headerOOrHeaderOs.length
-      headerOOrHeaderOs[0].width = Math.floor tableWidth - headerOOrHeaderOs.slice(1).reduce ((totalWidth, {width}) -> totalWidth + width - 1), 0
+      widthSum = headerOOrHeaderOs.reduce ((totalWidth, {width}) -> totalWidth + width - 1), 0
+      headerOOrHeaderOs.forEach (headerO, i) ->
+        if i is headerOOrHeaderOs.length - 1
+          headerO.width = 0
+          headerO.width = Math.floor tableWidth - headerOOrHeaderOs.reduce ((totalWidth, {width}) -> totalWidth + width - 1), 0
+        else
+          headerO.width = Math.floor headerO.width * tableWidth / widthSum
       return headerOOrHeaderOs.map (headerO) ->
         addColumn headerO, true
 
     # column properties
     isNew = not isBatch
     headerO = headerOOrHeaderOs
+    changeCallback = undefined
+    deleteCallback = undefined
 
     # column element
     append table, columnE = E columnStyle,
       borderE = E borderStyle,
         headerE = E headerStyle,
-          spanE = E headerSpanStyle, headerO.title
+          spanE = E headerSpanStyle, headerO.descriptor.title
           bottomBorderE = E headerBottomBorderStyle
           upE = E headerUpButtonStyle
           downE = E headerDownButtonStyle
         changeE = E columnChangeStyle
         changeListE = E columnChangeListStyle,
+          changeListItems = headerDescriptors.map ({title}) ->
+            E columnListItemStyle, title
           deleteE = E columnDeleteStyle, 'حذف ستون'
+        searchE = E columnSearchStyle,
+          searchboxE = E 'input', columnSearchboxStyle
         dataE = E columnDataStyle
 
     # column state
-    listItems = []
     listIsOpen = false
     dragDown = null
     place = 0 #, headerO.width
@@ -81,11 +94,12 @@ module.exports = ->
       setStyle columnE, {width}                # need to be checked
     downSpring = spring [300, 50], (x) ->      # if running to set isDrifting
       shadow = x * 16
-      scale = 1 + x * 0.1
+      scaleX = 1 + x * 0.1
+      scaleY = 1 + x * 0.02
       setStyle columnE,
         boxShadow: "rgba(0, 0, 0, 0.2) 0px #{shadow}px #{2 * shadow}px 0px"
-        transform: "scale(#{scale})"
-        WebkitTransform: "scale(#{scale})"
+        transform: "scaleX(#{scaleX}) scaleY(#{scaleY})"
+        WebkitTransform: "scaleX(#{scaleX}) scaleY(#{scaleY})"
 
     # column helpers
     highlightHeader = ->
@@ -103,6 +117,12 @@ module.exports = ->
       else if layerX > headerO.width - 5
         return 2
       return 0
+    openChangeList = ->
+      headerOs.forEach (headerO) ->
+        headerO.closeChangeList()
+      setStyle changeE, columnChangeBackStyle
+      setStyle changeListE, opacity: 1, visibility: 'visible'
+      listIsOpen = true
 
     # column initialization
     if isNew
@@ -112,6 +132,7 @@ module.exports = ->
         totalWidth += headerO.width - 1
         headerO.putInPlace?()
       headerO.width = Math.floor tableWidth - totalWidth
+      openChangeList()
 
     headerO.index = headerOs.length
 
@@ -144,19 +165,35 @@ module.exports = ->
           setStyle borderE, borderLeft: borderHoverColor
         when 2
           setStyle borderE, borderRight: borderHoverColor
+    headerO.closeChangeList = ->
+      setStyle changeE, extend {}, columnChangeStyle, height: 10, lineHeight: 10, opacity: 1
+      setStyle changeListE, columnChangeListStyle
+      listIsOpen = false
 
     # column events
+    bindEvent columnE, 'mousedown', ->
+      setStyle columnE, zIndex: 1000
+      headerOs.forEach (ho) ->
+        if ho isnt headerO
+          ho.fixZIndex?()
+
     bindEvent changeE, 'click', ->
       if listIsOpen
-        setStyle changeE, extend {}, columnChangeStyle, height: 10, lineHeight: 10
-        setStyle changeListE, columnChangeListStyle
+        headerO.closeChangeList()
       else
-        setStyle changeE, columnChangeBackStyle
-        setStyle changeListE, opacity: 1, visibility: 'visible'
-      listIsOpen = not listIsOpen
+        openChangeList()
+
+    changeListItems.forEach (item, i) ->
+      headerDescriptor = headerDescriptors[i]
+      bindEvent item, 'click', ->
+        setStyle spanE, text: headerDescriptor.title
+        headerO.descriptor = headerDescriptor
+        headerO.closeChangeList()
+        changeCallback?()
 
     bindEvent deleteE, 'click', ->
-      removeColumn headerO.index
+      deleteColumn headerO.index
+      deleteCallback?()
 
     bindEvent headerE, 'mousemove', ({pageX}) ->
       unless mouseIsDown or cursorSide pageX
@@ -190,10 +227,7 @@ module.exports = ->
     bindEvent headerE, 'mousedown', ({pageX}) ->
       unless cursorSide pageX
         setStyle document.body, cursor: 'move'
-        setStyle columnE, cursor: 'move', zIndex: 1000
-        headerOs.forEach (ho) ->
-          if ho isnt headerO
-            ho.fixZIndex?()
+        setStyle columnE, cursor: 'move'
         dragDown = headerO: headerO, delta: pageX - place
         downSpring 1
 
@@ -276,27 +310,31 @@ module.exports = ->
       if resizeDown?.headerO is headerO
         resizeDown = null
 
-    addData: (data) ->
-      if typeof data is 'string'
+    returnObject =
+      getHeaderDescriptor: -> headerO.descriptor
+      onChanged: (callback) -> changeCallback = callback
+      onDelete: (callback) -> deleteCallback = callback
+      empty: -> empty dataE
+      setHeight: (height) ->
+        setStyle columnE, {height}
+      addData: (data) ->
         dataRowE = E null, data
-      else
-        dataRowE = data
-      append dataE, dataRowE
-      return dataRowE
-    setListItems: (items) ->
-      listItems = items
-      empty changeListE
-      append changeListE, items.map (item) ->
-        E columnListItemStyle, item
-      append changeListE, deleteE
-    changeMode: ->
-      setStyle changeE, height: 10, lineHeight: 10
-    defaultMode: ->
-      listIsOpen = false
-      setStyle changeE, columnChangeStyle
-      setStyle changeListE, columnChangeListStyle
+        append dataE, dataRowE
+        return dataRowE
+      changeMode: ->
+        setStyle changeE, height: 10, lineHeight: 10, opacity: 1
+        setStyle dataE, marginTop: 10
+      searchMode: ->
+        setStyle searchE, height: 30, lineHeight: 30, opacity: 1
+        setStyle dataE, marginTop: 30
+      defaultMode: ->
+        listIsOpen = false
+        setStyle changeE, columnChangeStyle
+        setStyle changeListE, columnChangeListStyle
+        setStyle searchE, columnSearchStyle
+        setStyle dataE, columnDataStyle
 
-  removeColumn = (index) ->
+  deleteColumn = (index) ->
     headerO = headerOs[index]
     partialWidth = tableWidth - headerO.width
     totalWidth = 0
@@ -321,10 +359,14 @@ module.exports = ->
     lastHeaderO.resize? (tableWidth - totalWidth), true
     lastHeaderO.putInPlace? true
 
+  setHeaderDescriptors = (descriptors) ->
+    headerDescriptors = descriptors
+
   return {
     table
+    setHeaderDescriptors
     addColumn
-    removeColumn
+    deleteColumn
     resizeTable
   }
 

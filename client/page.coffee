@@ -1,4 +1,4 @@
-{E, setStyle, append, events, bindEvent, extend} = require './utils'
+{E, setStyle, append, events, bindEvent, extend, collection} = require './utils'
 table = require './table'
 
 borderStyle =
@@ -7,10 +7,10 @@ borderStyle =
   background: 'white'
   border: '2px solid #AAA'
   borderRadius: 5
-  height: 500
+  height: 1000
 
 toolbarStyle =
-  marginTop: 65
+  marginTop: 10
   height: 60
 
 toolbarBorderStyle =
@@ -28,55 +28,91 @@ toolbarToggleStyle =
   height: 25
   display: 'block'
 
+toolbarSubmitStyle =
+  float: 'right'
+  background: '#5CB85C'
+  width: 0
+  height: 25
+  borderRadius: 3
+  transition: '0.15s'
+  overflow: 'hidden'
+  color: 'white'
+  cursor: 'pointer'
+  opacity: 0
+  paddingTop: 3
+
 module.exports = ->
+  state = require './state'
+
   setStyle document.body, background: '#F5F5F5'
 
   header = E 'img', width: '100%'
   header.setAttribute 'src', '/assets/header.png'
 
   tableInsance = table()
-
+  descriptors = [
+    {name: 'condition', title: 'وضعیت'}
+    {name: 'actualValue', title: 'مقدار واقعی'}
+    {name: 'fixed', title: 'fixed'}
+    {name: 'startTime', title: 'زمان شروع'}
+    {name: 'alertDefinitionId', title: 'زمان تعریف'}
+    {name: 'endTime', title: 'زمان پایان'}
+    {name: 'priority', title: 'اولویت'}
+    {name: 'alertKind', title: 'نوع'}
+    {name: 'supportUnit', title: 'واحد پشتیبانی'}
+    {name: 'resourceName', title: 'منبع'}
+    {name: 'repeat', title: 'تکرار'}
+    {name: 'name', title: 'نام'}
+    {name: 'id', title: 'شناسه'}
+  ]
+  tableInsance.setHeaderDescriptors descriptors
   border = E borderStyle,
     E toolbarStyle,
       changeBorder = E toolbarBorderStyle,
         timeE = E extend {}, toolbarToggleStyle, class: 'fa fa-calendar'
-      changeBorder = E toolbarBorderStyle,
+      searchBorderE = E toolbarBorderStyle,
         searchE = E extend {}, toolbarToggleStyle, class: 'fa fa-search'
+        searchSubmitE = E toolbarSubmitStyle,
+          E float: 'right', fontSize: 16, class: 'fa fa-check'
+          E float: 'right', fontSize: 11, margin: '0 5px', 'اعمال'
       changeBorderE = E toolbarBorderStyle,
         changeE = E extend {}, toolbarToggleStyle, class: 'fa fa-arrows-alt'
-        changeSubmitE = E float: 'right', background: '#5CB85C', width: 0, height: 25, borderRadius: 3, transition: '0.15s', overflow: 'hidden', color: 'white', cursor: 'pointer', opacity: 0, paddingTop: 3,
+        changeSubmitE = E toolbarSubmitStyle,
           E float: 'right', fontSize: 16, class: 'fa fa-plus'
           E float: 'right', fontSize: 11, margin: '0 5px', 'افزودن ستون'
     tableInsance.table
 
-  columns = tableInsance.addColumn [1..5].map (x, i) ->
-    title: x
-    width: 10 + 5 * i
+  columns = tableInsance.addColumn descriptors.map (x) ->
+    descriptor: x
+    width: 10
 
-  columns.forEach (column) ->
-    column.addData 'lorem'
-    column.addData 'ipsum'
-    column.addData 'dolor'
-    column.addData 'sit'
-    column.addData 'amet'
-    column.setListItems ['lorem', 'ipsum', 'dolor', 'sit', 'amet']
+  mode = 'default'
 
-  isChangeMode = false
+  defaultMode = ->
+    setStyle changeBorderE, marginTop: 10, padding: 0, background: '#FFF'
+    setStyle searchBorderE, marginTop: 10, padding: 0, background: '#FFF'
+    setStyle changeSubmitE, width: 0, marginRight: 0, paddingRight: 0, opacity: 0
+    setStyle searchSubmitE, width: 0, marginRight: 0, paddingRight: 0, opacity: 0
+    columns.forEach (column) -> column.defaultMode()
+    mode = 'default'
+
   bindEvent changeE, 'click', ->
-    if isChangeMode
-      setStyle changeBorderE, marginTop: 10, padding: 0, background: '#FFF'
-      setStyle changeSubmitE, width: 0, marginRight: 0, paddingRight: 0, opacity: 0
-      columns.forEach (column) -> column.defaultMode()
-    else
+    isChange = mode is 'change'
+    defaultMode()
+    unless isChange
       setStyle changeBorderE, marginTop: 0, padding: '10px 10px', background: '#EEE'
       setStyle changeSubmitE, width: 100, marginRight: 10, paddingRight: 5, opacity: 1
       columns.forEach (column) -> column.changeMode()
-    isChangeMode = not isChangeMode
+      mode = 'change'
 
-  bindEvent changeSubmitE, 'click', ->
-    columns.push newColumn = tableInsance.addColumn title: 'ali'
-    newColumn.setListItems ['lorem', 'ipsum', 'dolor', 'sit', 'amet']
-    newColumn.changeMode()
+  bindEvent searchE, 'click', ->
+    isSearch = mode is 'search'
+    defaultMode()
+    unless isSearch
+      setStyle searchBorderE, marginTop: 0, padding: '10px 10px', background: '#EEE'
+      setStyle searchSubmitE, width: 100, marginRight: 10, paddingRight: 5, opacity: 1
+      columns.forEach (column) -> column.searchMode()
+      mode = 'search'
 
   resizeCallback = ->
     setTimeout ->
@@ -85,6 +121,61 @@ module.exports = ->
   events.resize resizeCallback
   if module.hot
     resizeCallback()
+
+
+  bindEvent searchSubmitE, 'click', defaultMode
+
+  alerts = undefined
+
+  setColumnData = (column) ->
+    column.empty()
+    key = column.getHeaderDescriptor().name
+    alerts.forEach (alert) ->
+      column.addData alert[key]
+
+
+  bindEvent changeSubmitE, 'click', ->
+    newColumn = tableInsance.addColumn descriptor: descriptors[0]
+    newColumn.changeMode()
+    newColumn.onChanged ->
+      setColumnData newColumn
+    setColumnData newColumn
+    columns.push newColumn
+
+  columns.forEach (column) ->
+    column.onChanged ->
+      setColumnData column
+
+  addRow = (alert) ->
+    columns.map (column) ->
+      key = column.getHeaderDescriptor().name
+      element = column.addData alert[key]
+      {key, element}
+
+  removeRow = (data) ->
+    data.forEach ({element}) ->
+      destroy element
+
+  changeRow = (alert, data) ->
+    data.forEach ({key, element}) ->
+      setStyle element, text: alert[key]
+    data
+
+  handleRows = collection addRow, removeRow, changeRow
+
+  state.ready 'alerts', (_alerts) ->
+
+    alerts = _alerts
+
+    resizeCallback()
+    columnHeight = alerts.length * 27 + 100
+    columns.forEach (column) ->
+      column.setHeight columnHeight
+
+    setStyle border, height: alerts.length * 27  + 210
+
+    handleRows alerts
+
 
   append [header, border]
 

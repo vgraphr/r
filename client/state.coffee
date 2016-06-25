@@ -1,28 +1,32 @@
-createPubSub = (name, timeout = 30 * 1000) ->
-  data = null
-  lastUpdated = 0
-  subscribers = []
-  setTimeout: (t) -> timeout = t
-  onChanged: (callback) ->
-    callback data
-    subscribers.push callback
-    -> subscribers.splice subscribers.indexOf(callback), 1
-  get: -> data
+{createPubSub} = require './utils'
 
-  set: set = (newData) ->
-    time = +new Date()
-    if (newData is data) or (!data and !newData)
-      lastUpdated = time
-    else if newData?.then?
-      if (time - lastUpdated) > timeout
-        set loading: true
-      newData.then set
-    else
-      lastUpdated = time unless newData?.loading
-      subscribers.forEach (subscriber) ->
-        subscriber newData, data
-      data = newData
-    return newData
+[
+  'alerts'
+].forEach (x) ->
+  exports[x] = createPubSub(x)
 
-['alerts'].forEach (x) ->
-  exports[x] = createPubSub x
+
+exports.all = (onlyOnce, keys, callback) ->
+  values = {}
+  unsubscribeAll = ->
+    unsubscribes.forEach (unsubscribe) -> unsubscribe()
+  unsubscribes = keys.map (key) ->
+    exports[key].onChanged (value) ->
+      return if not value? or value.loading
+
+      values[key] = value
+        
+      if (keys.every (key) -> values[key]?)
+        if onlyOnce
+          setTimeout unsubscribeAll
+        callback keys.map (key) -> values[key]
+
+  return unsubscribeAll
+
+exports.once = (key, callback) ->
+  exports.all true, [key], ([x]) ->
+    callback x
+
+exports.ready = (key, callback) ->
+  exports.all false, [key], ([x]) ->
+    callback x

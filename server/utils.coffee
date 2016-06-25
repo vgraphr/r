@@ -5,10 +5,11 @@ unless module.dynamic
 
   req = require
 
-  Q       = req "q"
-  http    = req 'http'
-  express = req 'express'
-  request = req 'request'
+  Q           = req "q"
+  http        = req 'http'
+  express     = req 'express'
+  querystring = req 'querystring'
+  urlHelpers  = req 'url'
 
   Q.longStackSupport = true
 
@@ -41,11 +42,11 @@ unless module.dynamic
   exports.server = server
   exports.app    = app
 
-  exports._data = {Q, http, express, app, request}
+  exports._data = {Q, http, express, app, querystring, urlHelpers}
 
 else
 
-  {Q, http, express, app, request} = module._data
+  {Q, http, express, app, querystring, urlHelpers} = module._data
 
 exports.Q = Q
 
@@ -196,4 +197,31 @@ handle = (methodName) -> (route, handler) ->
 exports.get = handle 'get'
 exports.post = handle 'post'
 
-exports.requestGet = Qdenodify request, request.get
+handleRequest = (isGet, url, data = {}, headersOrCookie = {}) ->
+  dataString = querystring.stringify data
+  object = urlHelpers.parse url
+  object.method = if isGet then 'GET' else 'POST'
+  if isGet
+    object.headers = {}
+  else
+    object.headers =
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Length': dataString.length
+  if typeof headersOrCookie is 'string'
+    object.headers = cookie: headersOrCookie
+  else if typeof headersOrCookie is 'object'
+    Object.keys(headersOrCookie).forEach (key) -> object.headers[key] = headersOrCookie[key]
+  Q.Promise (resolve) ->
+    req = http.request object, (res) ->
+      res.setEncoding 'utf8'
+      body = ''
+      res.on 'data', (data) ->
+        body += data
+      res.on 'end', ->
+        res.body = body
+        resolve res
+    req.end unless isGet then dataString
+
+exports.request = 
+  get: (url, headersOrCookie) -> handleRequest true, url, null, headersOrCookie
+  post: (url, data, headersOrCookie) -> handleRequest false, url, data, headersOrCookie
