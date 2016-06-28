@@ -14,6 +14,7 @@ tableStylePage = require './tableStyle'
   headerHoverBottomBorderStyle
   borderHoverColor
   columnDataStyle
+  columnDataItemStyle
   columnChangeStyle
   columnChangeListStyle
   columnChangeBackStyle
@@ -85,6 +86,7 @@ module.exports = ->
     place = 0 #, headerO.width
     isDrifting = false
     borderHighlighted = false
+    dataItemEs = []
     # column animations
     placeSpring = spring [300, 50], (x, running) ->
       place = Math.floor x
@@ -166,7 +168,7 @@ module.exports = ->
         when 2
           setStyle borderE, borderRight: borderHoverColor
     headerO.closeChangeList = ->
-      setStyle changeE, extend {}, columnChangeStyle, height: 10, lineHeight: 10, opacity: 1
+      setStyle changeE, extend {}, columnChangeStyle, height: 15, lineHeight: 15, opacity: 1
       setStyle changeListE, columnChangeListStyle
       listIsOpen = false
 
@@ -182,6 +184,13 @@ module.exports = ->
         headerO.closeChangeList()
       else
         openChangeList()
+
+    bindEvent changeE, 'mousemove', ->
+      unless listIsOpen
+        setStyle changeE, background: '#5BC0DE'
+    bindEvent changeE, 'mouseout', ->
+      unless listIsOpen
+        setStyle changeE, extend {}, columnChangeStyle, height: 15, lineHeight: 15, opacity: 1
 
     changeListItems.forEach (item, i) ->
       headerDescriptor = headerDescriptors[i]
@@ -318,12 +327,14 @@ module.exports = ->
       setHeight: (height) ->
         setStyle columnE, {height}
       addData: (data) ->
-        dataRowE = E null, data
-        append dataE, dataRowE
-        return dataRowE
+        dataItemE = E columnDataItemStyle, String data
+        append dataE, dataItemE
+        dataItemEs.push dataItemE
+        return dataItemE
+      getDataItems: -> dataItemEs
       changeMode: ->
-        setStyle changeE, height: 10, lineHeight: 10, opacity: 1
-        setStyle dataE, marginTop: 10
+        setStyle changeE, height: 15, lineHeight: 15, opacity: 1
+        setStyle dataE, marginTop: 15
       searchMode: ->
         setStyle searchE, height: 30, lineHeight: 30, opacity: 1
         setStyle dataE, marginTop: 30

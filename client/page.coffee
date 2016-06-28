@@ -5,13 +5,12 @@ borderStyle =
   width: '94%'
   margin: '0 3%'
   background: 'white'
-  border: '2px solid #AAA'
+  border: '1px solid #CCC'
   borderRadius: 5
   height: 1000
 
 toolbarStyle =
-  marginTop: 10
-  height: 60
+  height: 45
 
 toolbarBorderStyle =
   marginTop: 10
@@ -78,7 +77,7 @@ module.exports = ->
       changeBorderE = E toolbarBorderStyle,
         changeE = E extend {}, toolbarToggleStyle, class: 'fa fa-arrows-alt'
         changeSubmitE = E toolbarSubmitStyle,
-          E float: 'right', fontSize: 16, class: 'fa fa-plus'
+          E float: 'right', fontSize: 13, marginTop: 3, class: 'fa fa-plus'
           E float: 'right', fontSize: 11, margin: '0 5px', 'افزودن ستون'
     tableInsance.table
 
@@ -100,8 +99,8 @@ module.exports = ->
     isChange = mode is 'change'
     defaultMode()
     unless isChange
-      setStyle changeBorderE, marginTop: 0, padding: '10px 10px', background: '#EEE'
-      setStyle changeSubmitE, width: 100, marginRight: 10, paddingRight: 5, opacity: 1
+      setStyle changeBorderE, marginTop: 5, padding: 5, background: '#EEE'
+      setStyle changeSubmitE, width: 100, marginRight: 5, paddingRight: 5, opacity: 1
       columns.forEach (column) -> column.changeMode()
       mode = 'change'
 
@@ -109,7 +108,7 @@ module.exports = ->
     isSearch = mode is 'search'
     defaultMode()
     unless isSearch
-      setStyle searchBorderE, marginTop: 0, padding: '10px 10px', background: '#EEE'
+      setStyle searchBorderE, marginTop: 5, padding: 5, background: '#EEE'
       setStyle searchSubmitE, width: 100, marginRight: 10, paddingRight: 5, opacity: 1
       columns.forEach (column) -> column.searchMode()
       mode = 'search'
@@ -168,13 +167,17 @@ module.exports = ->
     alerts = _alerts
 
     resizeCallback()
-    columnHeight = alerts.length * 27 + 100
+    columnHeight = alerts.length * 23 + 100
     columns.forEach (column) ->
       column.setHeight columnHeight
 
-    setStyle border, height: alerts.length * 27  + 210
+    setStyle border, height: alerts.length * 23  + 210
 
     handleRows alerts
+    columns.forEach (column) ->
+      column.getDataItems().forEach (element, i) ->
+        if i % 2
+          setStyle element, background: '#F8F8F8'
 
 
   append [header, border]

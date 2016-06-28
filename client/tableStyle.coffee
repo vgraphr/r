@@ -19,26 +19,22 @@ exports.borderStyle =
   borderLeft: '1px solid transparent'
   borderRight: '1px solid transparent'
 
-exports.cellStyle =
-  background: 'white'
+exports.headerStyle =
   display: 'inline-block'
   height: 40
-  fontSize: 11
-
-exports.headerStyle = extend {}, exports.cellStyle,
   borderTop: '1px solid #DDD'
   borderBottom: '1px solid #DDD'
-  fontSize: 20
+  fontSize: 13
   position: 'absolute'
   color: '#888'
   left: 0
   right: 0
-  overflow: 'hidden'
 
 exports.headerSpanStyle =
   position: 'absolute'
   left: 30
   right: 10
+  height: 40
   lineHeight: 40
   overflow: 'hidden'
   color: '#888'
@@ -75,16 +71,23 @@ exports.headerHoverSpanStyle =
 exports.headerHoverBottomBorderStyle =
   height: 2
 
-exports.borderHoverColor = '1px solid #5BC0DE'
+exports.borderHoverColor = '1px solid transparent'
 
 exports.columnDataStyle =
   position: 'absolute'
-  top: 50
-  left: 0
-  right: 10
+  top: 45
+  left: -1
+  right: -1
   overflow: 'hidden'
   transition: '0.15s'
   marginTop: 0
+
+exports.columnDataItemStyle =
+  paddingRight: 10
+  paddingTop: 2
+  fontSize: 12
+  height: 23
+  overflow: 'hidden'
 
 exports.columnChangeStyle =
   position: 'absolute'
@@ -106,7 +109,7 @@ exports.columnChangeStyle =
 exports.columnChangeListStyle =
   position: 'absolute'
   minWidth: 170
-  top: 50
+  top: 55
   background: 'white'
   boxShadow: 'rgba(0, 0, 0, 0.2) 0px 16px 32px 0px'
   zIndex: 9999
@@ -118,7 +121,7 @@ exports.columnChangeBackStyle = extend {}, exports.columnChangeStyle,
   class: 'fa fa-angle-up'
   background: 'white'
   color: 'black'
-  height: 10
+  height: 15
   lineHeight: 10
   opacity: 1
 
@@ -134,11 +137,13 @@ exports.columnDeleteStyle =
   textAlign: 'center'
   borderRadius: '0 0 5px 5px'
   cursor: 'pointer'
+  fontSize: 12
 
 exports.columnListItemStyle =
   padding: '5px 15px 5px 80px'
   color: '#888'
   cursor: 'pointer'
+  fontSize: 12
 
 exports.columnSearchStyle = 
   position: 'absolute'
