@@ -51,17 +51,16 @@ module.exports = ->
       headerOOrHeaderOs.forEach (headerO, i) ->
         if i is headerOOrHeaderOs.length - 1
           headerO.width = 0
-          headerO.width = Math.floor tableWidth - headerOOrHeaderOs.reduce ((totalWidth, {width}) -> totalWidth + width - 1), 0
+          headerO.width = Math.floor tableWidth - headerOOrHeaderOs.reduce ((totalWidth, {width}) -> Math.floor totalWidth + width), 0
         else
-          headerO.width = Math.floor headerO.width * tableWidth / widthSum
+          headerO.width = Math.floor (headerO.width * tableWidth / widthSum) - 1
       return headerOOrHeaderOs.map (headerO) ->
         addColumn headerO, true
 
     # column properties
     isNew = not isBatch
     headerO = headerOOrHeaderOs
-    changeCallback = undefined
-    deleteCallback = undefined
+    changeCallback = deleteCallback = searchCallback = sortCallback = undefined
 
     # column element
     append table, columnE = E columnStyle,
@@ -87,6 +86,7 @@ module.exports = ->
     isDrifting = false
     borderHighlighted = false
     dataItemEs = []
+    sortDirection = null
     # column animations
     placeSpring = spring [300, 50], (x, running) ->
       place = Math.floor x
@@ -97,7 +97,7 @@ module.exports = ->
     downSpring = spring [300, 50], (x) ->      # if running to set isDrifting
       shadow = x * 16
       scaleX = 1 + x * 0.1
-      scaleY = 1 + x * 0.02
+      scaleY = 1 + x * 1 / dataItemEs.length
       setStyle columnE,
         boxShadow: "rgba(0, 0, 0, 0.2) 0px #{shadow}px #{2 * shadow}px 0px"
         transform: "scaleX(#{scaleX}) scaleY(#{scaleY})"
@@ -171,8 +171,34 @@ module.exports = ->
       setStyle changeE, extend {}, columnChangeStyle, height: 15, lineHeight: 15, opacity: 1
       setStyle changeListE, columnChangeListStyle
       listIsOpen = false
+    headerO.unsort = ->
+      sortDirection = null
 
     # column events
+    bindEvent searchboxE, 'input', ->
+      searchCallback? searchboxE.value
+
+    bindEvent headerE, 'click', ({pageX, pageY}) ->
+      layerX = pageX - headerE.getBoundingClientRect().left
+      layerY = pageY - headerE.getBoundingClientRect().top
+      if 10 <= layerX <= 15
+        if 13 <= layerY <= 19
+          if sortDirection is 'up'
+            sortDirection = null
+          else
+            sortDirection = 'up'
+        else if 20 <= layerY <= 26
+          if sortDirection is 'down'
+            sortDirection = null
+          else
+            sortDirection = 'down'
+
+        if 13 <= layerY <= 26
+          headerOs.forEach (ho, index) ->
+            if ho isnt headerO
+              ho.unsort?()
+          sortCallback?()
+
     bindEvent columnE, 'mousedown', ->
       setStyle columnE, zIndex: 1000
       headerOs.forEach (ho) ->
@@ -233,7 +259,11 @@ module.exports = ->
         unless dragDown or resizeDown
           setStyle columnE, cursor: 'default'
 
-    bindEvent headerE, 'mousedown', ({pageX}) ->
+    bindEvent headerE, 'mousedown', ({pageX, pageY}) ->
+      layerX = pageX - headerE.getBoundingClientRect().left
+      layerY = pageY - headerE.getBoundingClientRect().top
+      return if (10 <= layerX <= 15) and (13 <= layerY <= 26)
+
       unless cursorSide pageX
         setStyle document.body, cursor: 'move'
         setStyle columnE, cursor: 'move'
@@ -323,6 +353,10 @@ module.exports = ->
       getHeaderDescriptor: -> headerO.descriptor
       onChanged: (callback) -> changeCallback = callback
       onDelete: (callback) -> deleteCallback = callback
+      onSearch: (callback) -> searchCallback = callback
+      onSort: (callback) -> sortCallback = callback
+      getSearchValue: -> searchboxE.value
+      getSortDirection: -> sortDirection
       empty: -> empty dataE
       setHeight: (height) ->
         setStyle columnE, {height}
@@ -332,6 +366,9 @@ module.exports = ->
         dataItemEs.push dataItemE
         return dataItemE
       getDataItems: -> dataItemEs
+      removeDataItem: (dataItem) ->
+        dataItemEs.splice dataItemEs.indexOf(dataItem), 1
+        destroy dataItem
       changeMode: ->
         setStyle changeE, height: 15, lineHeight: 15, opacity: 1
         setStyle dataE, marginTop: 15

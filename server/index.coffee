@@ -26,6 +26,6 @@ setInterval setSidQ, 1000
 
 post 'alerts', ->
   sidQ.then ->
-    request.get 'http://10.20.19.203:8080/api/webApi/alertsNow?startDate=1467092383870'
+    request.get 'http://10.20.19.203:8080/api/webApi/alertsNow?startDate=1467613370742'
   .then ({body}) ->
     JSON.parse body

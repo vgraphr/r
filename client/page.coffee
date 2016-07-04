@@ -49,6 +49,7 @@ module.exports = ->
   header.setAttribute 'src', '/assets/header.png'
 
   tableInsance = table()
+
   descriptors = [
     {name: 'condition', title: 'وضعیت'}
     {name: 'actualValue', title: 'مقدار واقعی'}
@@ -58,7 +59,6 @@ module.exports = ->
     {name: 'endTime', title: 'زمان پایان'}
     {name: 'priority', title: 'اولویت'}
     {name: 'alertKind', title: 'نوع'}
-    {name: 'supportUnit', title: 'واحد پشتیبانی'}
     {name: 'resourceName', title: 'منبع'}
     {name: 'repeat', title: 'تکرار'}
     {name: 'name', title: 'نام'}
@@ -72,7 +72,7 @@ module.exports = ->
       searchBorderE = E toolbarBorderStyle,
         searchE = E extend {}, toolbarToggleStyle, class: 'fa fa-search'
         searchSubmitE = E toolbarSubmitStyle,
-          E float: 'right', fontSize: 16, class: 'fa fa-check'
+          E float: 'right', fontSize: 13, marginTop: 1, class: 'fa fa-check'
           E float: 'right', fontSize: 11, margin: '0 5px', 'اعمال'
       changeBorderE = E toolbarBorderStyle,
         changeE = E extend {}, toolbarToggleStyle, class: 'fa fa-arrows-alt'
@@ -147,13 +147,14 @@ module.exports = ->
 
   addRow = (alert) ->
     columns.map (column) ->
+      {removeDataItem} = column
       key = column.getHeaderDescriptor().name
       element = column.addData alert[key]
-      {key, element}
+      {key, element, removeDataItem}
 
   removeRow = (data) ->
-    data.forEach ({element}) ->
-      destroy element
+    data.forEach ({element, removeDataItem}) ->
+      removeDataItem element
 
   changeRow = (alert, data) ->
     data.forEach ({key, element}) ->
@@ -166,18 +167,35 @@ module.exports = ->
 
     alerts = _alerts
 
-    resizeCallback()
-    columnHeight = alerts.length * 23 + 100
-    columns.forEach (column) ->
-      column.setHeight columnHeight
+    do update = ->
+      filteredAlerts = alerts
+      sort = null
+      columns.forEach (column) ->
+        key = column.getHeaderDescriptor().name
+        value = column.getSearchValue()
+        filteredAlerts = filteredAlerts.filter (alert) -> not value or ~String(alert[key]).indexOf value
+        sortDirection = column.getSortDirection()
+        if sortDirection
+          sort = key: key, direction: sortDirection
 
-    setStyle border, height: alerts.length * 23  + 210
+        column.onSearch update
+        column.onSort update
 
-    handleRows alerts
-    columns.forEach (column) ->
-      column.getDataItems().forEach (element, i) ->
-        if i % 2
-          setStyle element, background: '#F8F8F8'
+      if sort
+        {key, direction} = sort
+        compare = (a, b) -> if a > b then 1 else if a < b then -1 else 0
+        filteredAlerts = filteredAlerts.sort (a, b) -> if direction is 'up' then compare(a[key], b[key]) else  compare(b[key], a[key])
+      handleRows filteredAlerts
+
+      columns.forEach (column) ->
+        column.getDataItems().forEach (element, i) ->
+          if i % 2
+            setStyle element, background: '#F8F8F8'
+        column.setHeight filteredAlerts.length * 23 + 100
+
+      setStyle border, height: filteredAlerts.length * 23  + 210
+      resizeCallback()
+
 
 
   append [header, border]
