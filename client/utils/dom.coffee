@@ -1,118 +1,128 @@
+{isFirefox} = require '.'
 
-module.exports = ({headerNames, itemData, onData, onRowClick, deleteItem, deleteText, searchBoxes = [], wrapperStyle = null}) ->
-  Q = require '../q'
-  {E, destroy, append, toPersian, bindEvent, setStyle, collection, show, hide, addClass, removeClass} = require '../utils'
-  modal = require '../modal'
+bindEvent = (element, event, callback) ->
+  if Array.isArray element
+    unbinds = element.map (element) -> bindEvent element, event, callback
+    return -> unbinds.forEach (unbind) -> unbind()
+  element.addEventListener event, callback
+  -> element.removeEventListener event, callback
 
-  view = E position: 'relative',
-    noData = E wrapperStyle, 'در حال بارگزاری...'
-    hide yesData = E wrapperStyle,
-      E 'table', class: 'table table-striped table-bordered',
-        E 'thead', null,
-          E 'tr', null,
-            headerNames.map (headerName, index) ->
-              E 'th', position: 'relative', minWidth: 100, (
-                if searchBoxes.length
-                  [
-                    E position: 'absolute', top: 5, headerName
-                    searchBoxes[index]
-                  ]
-                else
-                  headerName
-              )
-            if deleteItem
-              E 'th', width: 45
-        body = E 'tbody', null
-    coverE = E position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'white', transition: '0.5s'
+append = ->
+  if arguments.length is 1
+    element = arguments[0]
+    parent = document.body
+  else if arguments.length is 2
+    element = arguments[1]
+    parent = arguments[0]
+  if Array.isArray element
+    element.forEach (element) ->
+      append parent, element
+  else if element
+    parent.appendChild element
 
-  cover = ->
-    setStyle coverE, opacity: 0.5, visibility: 'visible'
-  do uncover = ->
-    setStyle coverE, opacity: 0, visibility: 'hidden'
+destroy = (element) -> element.parentNode.removeChild element
 
-  deleteHandler = (item) -> ->
-    if deleteText
-      modal.display
-        contents: E 'p', null, deleteText
-        submitText: 'حذف'
-        submitType: 'danger'
-        closeText: 'انصراف'
-        enabled: true
-        onSubmit: ->
-          modal.hide()
-          cover()
-          Q deleteItem item
-          .fin uncover
+empty = (element) ->
+  while element.children?.length
+    destroy element.children[0]
+
+setStyle = (element, style = {}) ->
+  if Array.isArray element
+    return element.map (element) -> setStyle element, style
+  Object.keys(style).forEach (key) ->
+    val = style[key]
+    if key is 'text'
+      if isFirefox
+        element.innerHTML = val
+      else
+        element.innerText = val
+    else if key is 'value'
+      element.value = val
+      element.dispatchEvent new Event 'input'
+    else if key is 'checked'
+      element.checked = val
+    else if key in ['class', 'type', 'placeholder', 'id', 'for', 'src']
+      element.setAttribute key, val
     else
-      cover()
-      Q deleteItem item
-      .fin uncover
+      if (typeof val is 'number') and not (key in ['opacity', 'zIndex'])
+        val = Math.floor(val) + 'px' 
+      element.style[key] = val
+  return element
 
-  addRow = (item) ->
-    append body, element = E 'tr', null,
-      itemData.map (key) ->
-        if typeof key is 'string'
-          E 'td', cursor: (if onRowClick then 'pointer' else 'default'), toPersian item[key] ? ''
-        else if typeof key is 'function'
-          key item, E 'td', cursor: (if onRowClick then 'pointer' else 'default')
-      if deleteItem
-        deleteE = E 'td', cursor: 'pointer', color: 'red', 'حذف'
+addClass = (element, klass) ->
+  removeClass element, klass
+  element.setAttribute 'class', ((element.getAttribute('class') ? '') + ' ' + klass).replace(/\ +/g, ' ').trim()
+  return element
 
-    bindEvent element, 'mousemove', ->
-      addClass element, 'info'
-    bindEvent element, 'mouseout', ->
-      removeClass element, 'info'
+removeClass = (element, klass) ->
+  previousClass = (element.getAttribute 'class') ? ''
+  classIndex = previousClass.indexOf klass
+  if ~classIndex
+    element.setAttribute 'class', ((previousClass.substr 0, classIndex) + (previousClass.substr classIndex + klass.length)).replace(/\ +/g, ' ').trim()
+  return element
 
-    if onRowClick
-      unbindClick = bindEvent element, 'click', (e) ->
-        target = e.target
-        while target isnt document.body
-          return if target is deleteE
-          target = target.parentNode
-        onRowClick item
-    if deleteItem
-      unbindDelete = bindEvent deleteE, 'click', deleteHandler item
-    {element, deleteE, unbindClick, unbindDelete}
+show = (element) ->
+  if Array.isArray element
+    return element.map (element) -> show element
+  removeClass element, 'hidden'
+  return element
 
-  removeRow = ({element}) ->
-    destroy element
+hide = (element) ->
+  if Array.isArray element
+    return element.map (element) -> hide element
+  addClass element, 'hidden'
+  return element
 
-  changeRow = (item, {element, deleteE, unbindClick, unbindDelete}) ->
-    itemData.map (key, index) ->
-      if typeof key is 'string'
-        setStyle element.children[index], text: toPersian item[key] ? ''
-      else if typeof key is 'function'
-        key item, element.children[index]
-    if onRowClick
-      unbindClick()
-      unbindClick = bindEvent element, 'click', (e) ->
-        target = e.target
-        while target isnt document.body
-          return if target is deleteE
-          target = target.parentNode
-        onRowClick item
-    if deleteItem
-      unbindDelete()
-      unbindDelete = bindEvent deleteE, 'click', deleteHandler item
-    {element, deleteE, unbindClick, unbindDelete}
+enable = (element) ->
+  if Array.isArray element
+    return element.map (element) -> enable element
+  element.removeAttribute 'disabled'
+  return element
 
-  handleRows = collection addRow, removeRow, changeRow
+disable = (element) ->
+  if Array.isArray element
+    return element.map (element) -> disable element
+  element.setAttribute 'disabled', 'disabled'
+  return element
 
-  filterData = undefined
-  update = ->
-    if filterData
-      hide noData
-      show yesData
-      filteredData = filterData searchBoxes.map (searchBox) -> searchBox.value
-    else 
-      filteredData = []
-    handleRows filteredData
+E = do ->
+  e = (tagName, style, children...) ->
+    element = document.createElement tagName
+    setStyle element, style
+    do appendChildren = (children) ->
+      children.forEach (x) ->
+        if (typeof x is 'string') or (typeof x is 'number')
+          setStyle element, text: x
+        else if Array.isArray x
+          appendChildren x
+        else
+          append element, x
+    element
 
-  onData (_filterData) ->
-    filterData = _filterData
-    update()
+  ->
+    firstArg = arguments[0]
+    if typeof firstArg is 'string'
+      e.apply null, arguments
+    else if typeof firstArg is 'object' and not Array.isArray firstArg
+      args = [].slice.call arguments
+      args.splice 0, 0, 'div'
+      e.apply null, args
+    else
+      args = [].slice.call arguments
+      args.splice 0, 0, 'div', {}
+      e.apply null, args
 
-  searchBoxes.forEach (searchBox) ->
-    bindEvent searchBox, 'input', update
-
-  return view
+module.exports = {
+  bindEvent
+  append
+  destroy
+  empty
+  setStyle
+  addClass
+  removeClass
+  show
+  hide
+  enable
+  disable
+  E
+}
