@@ -39,7 +39,9 @@ setStyle = (element, style = {}) ->
     else if key is 'value'
       element.value = val
       element.dispatchEvent new Event 'input'
-    else if key in ['class', 'type', 'placeholder', 'id', 'for']
+    else if key is 'checked'
+      element.checked = val
+    else if key in ['class', 'type', 'placeholder', 'id', 'for', 'src']
       element.setAttribute key, val
     else
       if (typeof val is 'number') and not (key in ['opacity', 'zIndex'])
@@ -48,6 +50,7 @@ setStyle = (element, style = {}) ->
   return element
 
 addClass = (element, klass) ->
+  removeClass element, klass
   element.setAttribute 'class', ((element.getAttribute('class') ? '') + ' ' + klass).replace(/\ +/g, ' ').trim()
   return element
 
@@ -67,7 +70,6 @@ show = (element) ->
 hide = (element) ->
   if Array.isArray element
     return element.map (element) -> hide element
-  removeClass element, 'hidden'
   addClass element, 'hidden'
   return element
 
