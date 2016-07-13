@@ -22,10 +22,10 @@ do setSidQ = ->
   .then (res) ->
     request.get res.headers.location
 
-setInterval setSidQ, 1000
+setInterval setSidQ, 30000
 
 post 'alerts', ->
   sidQ.then ->
-    request.get 'http://10.20.19.203:8080/api/webApi/alertsNow?startDate=1467613370742'
+    request.get 'http://10.20.19.203:8080/api/webApi/alertsNow?startDate=1468387301100'
   .then ({body}) ->
     JSON.parse body
