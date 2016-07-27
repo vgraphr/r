@@ -1,3 +1,4 @@
+
 {get, post, request, Q} = require './utils'
 
 req = request
@@ -29,3 +30,4 @@ post 'alerts', ->
     request.get 'http://10.20.19.203:8080/api/webApi/alertsNow?startDate=1468387301100'
   .then ({body}) ->
     JSON.parse body
+

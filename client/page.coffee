@@ -51,18 +51,18 @@ module.exports = ->
   tableInsance = table()
 
   descriptors = [
-    {name: 'condition', title: 'وضعیت'}
-    {name: 'actualValue', title: 'مقدار واقعی'}
-    {name: 'fixed', title: 'fixed'}
-    {name: 'startTime', title: 'زمان شروع'}
-    {name: 'alertDefinitionId', title: 'زمان تعریف'}
-    {name: 'endTime', title: 'زمان پایان'}
-    {name: 'priority', title: 'اولویت'}
-    {name: 'alertKind', title: 'نوع'}
-    {name: 'resourceName', title: 'منبع'}
-    {name: 'repeat', title: 'تکرار'}
-    {name: 'name', title: 'نام'}
-    {name: 'id', title: 'شناسه'}
+    {name: 'condition'         , title: 'وضعیت'}
+    {name: 'actualValue'       , title: 'مقدار واقعی'}
+    {name: 'fixed'             , title: 'fixed'}
+    {name: 'startTime'         , title: 'زمان شروع'}
+    {name: 'alertDefinitionId' , title: 'زمان تعریف'}
+    {name: 'endTime'           , title: 'زمان پایان'}
+    {name: 'priority'          , title: 'اولویت'}
+    {name: 'alertKind'         , title: 'نوع'}
+    {name: 'resourceName'      , title: 'منبع'}
+    {name: 'repeat'            , title: 'تکرار'}
+    {name: 'name'              , title: 'نام'}
+    {name: 'id'                , title: 'شناسه'}
   ]
   tableInsance.setHeaderDescriptors descriptors
   border = E borderStyle,
