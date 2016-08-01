@@ -75,9 +75,8 @@ service = require './service'
 state = require './state'
 
 page()
-['alerts'].forEach (key) ->
-  service.keepFresh key, (data) ->
-    state[key].set data
+service.keepFresh 'sampleAlerts', (data) ->
+  state.alerts.set data
 
 if module.dynamic
   unsubscribers = [

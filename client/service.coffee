@@ -39,6 +39,7 @@ exports.keepFresh = (fnName, callback) ->
 
 [
   'alerts'
+  'sampleAlerts'
 ]
 .forEach (x) ->
   exports[x] = post.bind null, x

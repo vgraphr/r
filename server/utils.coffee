@@ -5,11 +5,12 @@ unless module.dynamic
 
   req = require
 
-  Q           = req "q"
+  Q           = req 'q'
   http        = req 'http'
   express     = req 'express'
   querystring = req 'querystring'
   urlHelpers  = req 'url'
+  fs          = req 'fs'
 
   Q.longStackSupport = true
 
@@ -42,11 +43,11 @@ unless module.dynamic
   exports.server = server
   exports.app    = app
 
-  exports._data = {Q, http, express, app, querystring, urlHelpers}
+  exports._data = {Q, http, express, app, querystring, urlHelpers, fs}
 
 else
 
-  {Q, http, express, app, querystring, urlHelpers} = module._data
+  {Q, http, express, app, querystring, urlHelpers, fs} = module._data
 
 exports.Q = Q
 
@@ -225,3 +226,6 @@ handleRequest = (isGet, url, data = {}, headersOrCookie = {}) ->
 exports.request = 
   get: (url, headersOrCookie) -> handleRequest true, url, null, headersOrCookie
   post: (url, data, headersOrCookie) -> handleRequest false, url, data, headersOrCookie
+
+
+exports.readFile = Qdenodify fs, fs.readFile

@@ -4,6 +4,9 @@ bindEvent = (element, event, callback) ->
   if Array.isArray element
     unbinds = element.map (element) -> bindEvent element, event, callback
     return -> unbinds.forEach (unbind) -> unbind()
+  if Array.isArray event
+    unbinds = event.map (event) -> bindEvent element, event, callback
+    return -> unbinds.forEach (unbind) -> unbind()
   element.addEventListener event, callback
   -> element.removeEventListener event, callback
 
@@ -20,9 +23,14 @@ append = ->
   else if element
     parent.appendChild element
 
-destroy = (element) -> element.parentNode.removeChild element
+destroy = (element) ->
+  if Array.isArray element
+    return element.map (element) -> destroy element
+  element.parentNode.removeChild element
 
 empty = (element) ->
+  if Array.isArray element
+    return element.map (element) -> empty element
   while element.children?.length
     destroy element.children[0]
 
@@ -41,7 +49,7 @@ setStyle = (element, style = {}) ->
       element.dispatchEvent new Event 'input'
     else if key is 'checked'
       element.checked = val
-    else if key in ['class', 'type', 'placeholder', 'id', 'for', 'src']
+    else if key in ['class', 'type', 'placeholder', 'id', 'for', 'src', 'href', 'target']
       element.setAttribute key, val
     else
       if (typeof val is 'number') and not (key in ['opacity', 'zIndex'])
@@ -50,28 +58,24 @@ setStyle = (element, style = {}) ->
   return element
 
 addClass = (element, klass) ->
+  if Array.isArray element
+    return element.map (element) -> addClass element, klass
   removeClass element, klass
   element.setAttribute 'class', ((element.getAttribute('class') ? '') + ' ' + klass).replace(/\ +/g, ' ').trim()
   return element
 
 removeClass = (element, klass) ->
+  if Array.isArray element
+    return element.map (element) -> removeClass element, klass
   previousClass = (element.getAttribute 'class') ? ''
   classIndex = previousClass.indexOf klass
   if ~classIndex
     element.setAttribute 'class', ((previousClass.substr 0, classIndex) + (previousClass.substr classIndex + klass.length)).replace(/\ +/g, ' ').trim()
   return element
 
-show = (element) ->
-  if Array.isArray element
-    return element.map (element) -> show element
-  removeClass element, 'hidden'
-  return element
+show = (element) -> removeClass element, 'hidden'
 
-hide = (element) ->
-  if Array.isArray element
-    return element.map (element) -> hide element
-  addClass element, 'hidden'
-  return element
+hide = (element) -> addClass element, 'hidden'
 
 enable = (element) ->
   if Array.isArray element
