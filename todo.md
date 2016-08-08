@@ -1,1 +1,3 @@
-- reorder bug
+- field formatting
+- repeat logic
+- calendar

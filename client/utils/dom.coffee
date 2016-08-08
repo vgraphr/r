@@ -60,6 +60,8 @@ setStyle = (element, style = {}) ->
 addClass = (element, klass) ->
   if Array.isArray element
     return element.map (element) -> addClass element, klass
+  if Array.isArray klass
+    return klass.map (klass) -> addClass element, klass
   removeClass element, klass
   element.setAttribute 'class', ((element.getAttribute('class') ? '') + ' ' + klass).replace(/\ +/g, ' ').trim()
   return element
@@ -67,6 +69,8 @@ addClass = (element, klass) ->
 removeClass = (element, klass) ->
   if Array.isArray element
     return element.map (element) -> removeClass element, klass
+  if Array.isArray klass
+    return klass.map (klass) -> removeClass element, klass
   previousClass = (element.getAttribute 'class') ? ''
   classIndex = previousClass.indexOf klass
   if ~classIndex

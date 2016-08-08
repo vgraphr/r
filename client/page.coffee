@@ -54,8 +54,8 @@ module.exports = ->
     {name: 'condition'         , title: 'وضعیت'}
     {name: 'actualValue'       , title: 'مقدار واقعی'}
     {name: 'fixed'             , title: 'fixed'}
-    {name: 'startTime'         , title: 'زمان شروع'}
-    {name: 'alertDefinitionId' , title: 'زمان تعریف'}
+    {name: 'startTime'         , title: 'زمان شروع', noSearch: true}
+    {name: 'alertDefinitionId' , title: 'زمان تعریف', noSearch: true}
     {name: 'endTime'           , title: 'زمان پایان'}
     {name: 'priority'          , title: 'اولویت'}
     {name: 'alertKind'         , title: 'نوع'}
@@ -81,9 +81,7 @@ module.exports = ->
           E float: 'right', fontSize: 11, margin: '0 5px', 'افزودن ستون'
     tableInsance.table
 
-  columns = tableInsance.addColumn descriptors.map (x) ->
-    descriptor: x
-    width: 10
+  columns = tableInsance.addColumn descriptors.map (descriptor) -> {descriptor, width: 10}
 
   mode = 'default'
 
@@ -126,30 +124,29 @@ module.exports = ->
 
   alerts = undefined
 
-  setColumnData = (column) ->
-    column.empty()
-    key = column.getHeaderDescriptor().name
-    alerts.forEach (alert) ->
-      column.addData alert[key]
-
+  columns.forEach (column) ->
+    column.onSearch -> update()
+    column.onSort ->
+      console.log 1
+      update()
+    column.onChanged -> update()
 
   bindEvent changeSubmitE, 'click', ->
-    newColumn = tableInsance.addColumn descriptor: descriptors[0]
-    newColumn.changeMode()
-    newColumn.onChanged ->
-      setColumnData newColumn
-    setColumnData newColumn
-    columns.push newColumn
-
-  columns.forEach (column) ->
-    column.onChanged ->
-      setColumnData column
+    column = tableInsance.addColumn descriptor: descriptors[0]
+    column.changeMode()
+    columns.push column
+    column.onSearch -> update()
+    column.onSort -> update()
+    column.onChanged -> update()
+    key = column.getHeaderDescriptor().name
+    alerts.forEach (alert) ->
+      column.addDataItem alert[key]
 
   addRow = (alert) ->
     columns.map (column) ->
       {removeDataItem} = column
       key = column.getHeaderDescriptor().name
-      element = column.addData alert[key]
+      element = column.addDataItem alert[key]
       {key, element, removeDataItem}
 
   removeRow = (data) ->
@@ -163,40 +160,29 @@ module.exports = ->
 
   handleRows = collection addRow, removeRow, changeRow
 
+  update = ->
+    filteredAlerts = alerts
+    sort = null
+    columns.forEach (column) ->
+      key = column.getHeaderDescriptor().name
+      value = column.getSearchValue()
+      filteredAlerts = filteredAlerts.filter (alert) -> not value or ~String(alert[key]).indexOf value
+      sortDirection = column.getSortDirection()
+      if sortDirection
+        sort = key: key, direction: sortDirection
+
+    if sort
+      {key, direction} = sort
+      compare = (a, b) -> if a > b then 1 else if a < b then -1 else 0
+      filteredAlerts = filteredAlerts.sort (a, b) -> if direction is 'up' then compare(a[key], b[key]) else  compare(b[key], a[key])
+    handleRows filteredAlerts
+
+    setStyle border, height: filteredAlerts.length * 23  + 210
+    resizeCallback()
+
   state.ready 'alerts', (_alerts) ->
-
     alerts = _alerts
-
-    do update = ->
-      filteredAlerts = alerts
-      sort = null
-      columns.forEach (column) ->
-        key = column.getHeaderDescriptor().name
-        value = column.getSearchValue()
-        filteredAlerts = filteredAlerts.filter (alert) -> not value or ~String(alert[key]).indexOf value
-        sortDirection = column.getSortDirection()
-        if sortDirection
-          sort = key: key, direction: sortDirection
-
-        column.onSearch update
-        column.onSort update
-
-      if sort
-        {key, direction} = sort
-        compare = (a, b) -> if a > b then 1 else if a < b then -1 else 0
-        filteredAlerts = filteredAlerts.sort (a, b) -> if direction is 'up' then compare(a[key], b[key]) else  compare(b[key], a[key])
-      handleRows filteredAlerts
-
-      columns.forEach (column) ->
-        column.getDataItems().forEach (element, i) ->
-          if i % 2
-            setStyle element, background: '#F8F8F8'
-        column.setHeight filteredAlerts.length * 23 + 100
-
-      setStyle border, height: filteredAlerts.length * 23  + 210
-      resizeCallback()
-
-
+    update()
 
   append [header, border]
 

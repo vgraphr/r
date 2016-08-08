@@ -60,7 +60,7 @@ module.exports = ->
     # column properties
     isNew = not isBatch
     headerO = headerOOrHeaderOs
-    changeCallback = deleteCallback = searchCallback = sortCallback = undefined
+    changeCallback = searchCallback = sortCallback = undefined
 
     # column element
     append table, columnE = E columnStyle,
@@ -87,6 +87,7 @@ module.exports = ->
     borderHighlighted = false
     dataItemEs = []
     sortDirection = null
+    height = 100
     # column animations
     placeSpring = spring [300, 50], (x, running) ->
       place = Math.floor x
@@ -125,8 +126,18 @@ module.exports = ->
       setStyle changeE, columnChangeBackStyle
       setStyle changeListE, opacity: 1, visibility: 'visible'
       listIsOpen = true
+    updateSearchField = ->
+      if headerO.descriptor.noSearch
+        setStyle searchboxE, visibility: 'hidden'
+      else
+        setStyle searchboxE, visibility: 'visible'
+
 
     # column initialization
+    setStyle columnE, {height}
+
+    updateSearchField()
+
     if isNew
       totalWidth = 0
       headerOs.forEach (headerO) ->
@@ -173,12 +184,13 @@ module.exports = ->
       listIsOpen = false
     headerO.unsort = ->
       sortDirection = null
+      setStyle [upE, downE], color: null
 
     # column events
     bindEvent searchboxE, 'input', ->
       searchCallback? searchboxE.value
 
-    bindEvent headerE, 'click', ({pageX, pageY}) ->
+    bindEvent headerE, 'mousedown', ({pageX, pageY}) ->
       layerX = pageX - headerE.getBoundingClientRect().left
       layerY = pageY - headerE.getBoundingClientRect().top
       if 10 <= layerX <= 15
@@ -192,6 +204,13 @@ module.exports = ->
             sortDirection = null
           else
             sortDirection = 'down'
+
+        setStyle [upE, downE], color: null
+        switch sortDirection
+          when 'up'
+            setStyle upE, color: 'blue'
+          when 'down'
+            setStyle downE, color: 'blue'
 
         if 13 <= layerY <= 26
           headerOs.forEach (ho, index) ->
@@ -224,11 +243,11 @@ module.exports = ->
         setStyle spanE, text: headerDescriptor.title
         headerO.descriptor = headerDescriptor
         headerO.closeChangeList()
+        updateSearchField()
         changeCallback?()
 
     bindEvent deleteE, 'click', ->
       deleteColumn headerO.index
-      deleteCallback?()
 
     bindEvent headerE, 'mousemove', ({pageX}) ->
       unless mouseIsDown or cursorSide pageX
@@ -293,7 +312,7 @@ module.exports = ->
         unless borderHighlighted or (resizeDown and ((resizeDown.side is 1 and (resizeDown.headerO.index is headerO.index)) or (resizeDown.side is 2 and (resizeDown.headerO.index is headerO.index - 1))))
           setStyle borderE, borderStyle
 
-      if dragDown
+      if dragDown?.headerO is headerO
         placeSpring pageX - dragDown.delta, 'goto'
         destinationIndex = 0
         mouse = pageX - leftX
@@ -352,21 +371,22 @@ module.exports = ->
     returnObject =
       getHeaderDescriptor: -> headerO.descriptor
       onChanged: (callback) -> changeCallback = callback
-      onDelete: (callback) -> deleteCallback = callback
       onSearch: (callback) -> searchCallback = callback
       onSort: (callback) -> sortCallback = callback
       getSearchValue: -> searchboxE.value
       getSortDirection: -> sortDirection
-      empty: -> empty dataE
-      setHeight: (height) ->
+      addDataItem: (data) ->
+        height += 23
         setStyle columnE, {height}
-      addData: (data) ->
         dataItemE = E columnDataItemStyle, String data
+        if dataItemEs.length % 2          
+          setStyle dataItemE, background: '#F8F8F8'
         append dataE, dataItemE
         dataItemEs.push dataItemE
         return dataItemE
-      getDataItems: -> dataItemEs
       removeDataItem: (dataItem) ->
+        height -= 23
+        setStyle columnE, {height}
         dataItemEs.splice dataItemEs.indexOf(dataItem), 1
         destroy dataItem
       changeMode: ->
