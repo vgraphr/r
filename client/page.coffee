@@ -1,4 +1,5 @@
-{E, setStyle, append, events, bindEvent, extend, collection} = require './utils'
+{E, setStyle, append, events, bindEvent, extend, collection, empty} = require './utils'
+jalaali = require './jalaali'
 table = require './table'
 
 borderStyle =
@@ -51,18 +52,18 @@ module.exports = ->
   tableInsance = table()
 
   descriptors = [
-    {name: 'condition'         , title: 'وضعیت'}
-    {name: 'actualValue'       , title: 'مقدار واقعی'}
-    {name: 'fixed'             , title: 'fixed'}
-    {name: 'startTime'         , title: 'زمان شروع', noSearch: true}
-    {name: 'alertDefinitionId' , title: 'زمان تعریف', noSearch: true}
-    {name: 'endTime'           , title: 'زمان پایان'}
-    {name: 'priority'          , title: 'اولویت'}
-    {name: 'alertKind'         , title: 'نوع'}
-    {name: 'resourceName'      , title: 'منبع'}
-    {name: 'repeat'            , title: 'تکرار'}
-    {name: 'name'              , title: 'نام'}
-    {name: 'id'                , title: 'شناسه'}
+    {name: 'acknowledged' , title: 'Ack'}
+    {name: 'count'        , title: 'تعداد'}
+    {name: 'condition'    , title: 'شرایط'}
+    {name: 'actualValue'  , title: 'مقدار واقعی'}
+    {name: 'fixed'        , title: 'وضعیت'}
+    {name: 'endTime'      , title: 'زمان پایان', noSearch: true}
+    {name: 'startTime'    , title: 'زمان شروع', noSearch: true}
+    {name: 'priority'     , title: 'اولویت'}
+    {name: 'alertKind'    , title: 'نوع'}
+    {name: 'supportUnit'  , title: 'واحد پشتیبانی'}
+    {name: 'resourceName' , title: 'منبع'}
+    {name: 'name'         , title: 'نام'}
   ]
   tableInsance.setHeaderDescriptors descriptors
   border = E borderStyle,
@@ -122,13 +123,11 @@ module.exports = ->
 
   bindEvent searchSubmitE, 'click', defaultMode
 
-  alerts = undefined
+  alerts = []
 
   columns.forEach (column) ->
     column.onSearch -> update()
-    column.onSort ->
-      console.log 1
-      update()
+    column.onSort -> update()
     column.onChanged -> update()
 
   bindEvent changeSubmitE, 'click', ->
@@ -142,26 +141,71 @@ module.exports = ->
     alerts.forEach (alert) ->
       column.addDataItem alert[key]
 
+  getDataItem = (alert, key) ->
+    switch key
+      when 'priority'
+        E null, [1..alert.priority].map -> E float: 'right', width: 2, height: 20, margin: 1, borderRadius: 10, background: switch alert.priority
+          when 1
+            '#5CB85C'
+          when 2
+            '#F0AD4E'
+          when 3
+            '#D9534F'
+      when 'fixed'
+        E color: (if alert.fixed then '#5CB85C' else '#D9534F'), fontWeight: (if alert.acknowledged then 'normal' else 'bold'), text: if alert.fixed then 'OK' else 'Problem'
+      when 'acknowledged'
+        E fontWeight: (if alert.acknowledged then 'normal' else 'bold'), text: if alert.acknowledged then '✓' else ''
+      when 'startTime', 'endTime'
+        date = new Date alert[key]
+        hours = date.getHours()
+        minutes = date.getMinutes()
+        seconds = date.getSeconds()
+        day = date.getDate()
+        month = date.getMonth() + 1
+        year = date.getFullYear()
+        {jd: day, jm: month, jy: year} = jalaali.toJalaali(year, month, day)
+        E fontWeight: (if alert.acknowledged then 'normal' else 'bold'),
+          E display: 'inline-block', marginLeft: 15, text: "#{hours}:#{minutes}:#{seconds}"
+          E display: 'inline-block', text: "#{String(year).substr(2)}/#{month}/#{day}"
+      else
+        E fontWeight: (if alert.acknowledged then 'normal' else 'bold'), text: alert[key] ? ''
+
   addRow = (alert) ->
     columns.map (column) ->
       {removeDataItem} = column
       key = column.getHeaderDescriptor().name
-      element = column.addDataItem alert[key]
-      {key, element, removeDataItem}
+      placeholder = E()
+      append placeholder, getDataItem alert, key
+      column.addDataItem placeholder
+      bindEvent placeholder, 'click', ->
+        alert.acknowledged = true
+        update()
+      {column, placeholder, removeDataItem}
 
   removeRow = (data) ->
-    data.forEach ({element, removeDataItem}) ->
-      removeDataItem element
+    data.forEach ({placeholder, removeDataItem}) ->
+      removeDataItem placeholder
 
   changeRow = (alert, data) ->
-    data.forEach ({key, element}) ->
-      setStyle element, text: alert[key]
+    data.forEach ({column, placeholder}) ->
+      key = column.getHeaderDescriptor().name
+      empty placeholder
+      append placeholder, getDataItem alert, key
     data
 
   handleRows = collection addRow, removeRow, changeRow
 
   update = ->
+    alertDefinitionIds = {}
     filteredAlerts = alerts
+    .filter (alert) ->
+      if alert.fixed is false
+        if alertDefinitionIds[alert.alertDefinitionId]
+          return false
+        else
+          alertDefinitionIds[alert.alertDefinitionId] = true
+      return true
+
     sort = null
     columns.forEach (column) ->
       key = column.getHeaderDescriptor().name
@@ -181,7 +225,9 @@ module.exports = ->
     resizeCallback()
 
   state.ready 'alerts', (_alerts) ->
-    alerts = _alerts
+    alerts = alerts.concat _alerts.filter (alert) -> not alerts.some ({id}) -> alert.id is id
+    alerts.forEach (alert) ->
+      alert.count = alerts.filter(({alertDefinitionId}) -> alert.alertDefinitionId is alertDefinitionId).length
     update()
 
   append [header, border]

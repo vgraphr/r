@@ -375,15 +375,14 @@ module.exports = ->
       onSort: (callback) -> sortCallback = callback
       getSearchValue: -> searchboxE.value
       getSortDirection: -> sortDirection
-      addDataItem: (data) ->
+      addDataItem: (dataItemE) ->
         height += 23
         setStyle columnE, {height}
-        dataItemE = E columnDataItemStyle, String data
+        setStyle dataItemE, columnDataItemStyle
         if dataItemEs.length % 2          
           setStyle dataItemE, background: '#F8F8F8'
         append dataE, dataItemE
         dataItemEs.push dataItemE
-        return dataItemE
       removeDataItem: (dataItem) ->
         height -= 23
         setStyle columnE, {height}

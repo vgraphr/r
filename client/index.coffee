@@ -75,7 +75,7 @@ service = require './service'
 state = require './state'
 
 page()
-service.keepFresh 'sampleAlerts', (data) ->
+service.keepFresh 'alerts', (data) ->
   state.alerts.set data
 
 if module.dynamic
