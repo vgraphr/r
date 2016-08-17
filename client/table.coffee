@@ -98,7 +98,7 @@ module.exports = ->
     downSpring = spring [300, 50], (x) ->      # if running to set isDrifting
       shadow = x * 16
       scaleX = 1 + x * 0.1
-      scaleY = 1 + x * 1 / dataItemEs.length
+      scaleY = 1 + x * 0.5 / dataItemEs.length
       setStyle columnE,
         boxShadow: "rgba(0, 0, 0, 0.2) 0px #{shadow}px #{2 * shadow}px 0px"
         transform: "scaleX(#{scaleX}) scaleY(#{scaleY})"

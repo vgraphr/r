@@ -68,13 +68,10 @@ module.exports = ->
   tableInsance.setHeaderDescriptors descriptors
   border = E borderStyle,
     E toolbarStyle,
-      changeBorder = E toolbarBorderStyle,
+      E toolbarBorderStyle,
         timeE = E extend {}, toolbarToggleStyle, class: 'fa fa-calendar'
-      searchBorderE = E toolbarBorderStyle,
+      E toolbarBorderStyle,
         searchE = E extend {}, toolbarToggleStyle, class: 'fa fa-search'
-        searchSubmitE = E toolbarSubmitStyle,
-          E float: 'right', fontSize: 13, marginTop: 1, class: 'fa fa-check'
-          E float: 'right', fontSize: 11, margin: '0 5px', 'اعمال'
       changeBorderE = E toolbarBorderStyle,
         changeE = E extend {}, toolbarToggleStyle, class: 'fa fa-arrows-alt'
         changeSubmitE = E toolbarSubmitStyle,
@@ -88,9 +85,9 @@ module.exports = ->
 
   defaultMode = ->
     setStyle changeBorderE, marginTop: 10, padding: 0, background: '#FFF'
-    setStyle searchBorderE, marginTop: 10, padding: 0, background: '#FFF'
     setStyle changeSubmitE, width: 0, marginRight: 0, paddingRight: 0, opacity: 0
-    setStyle searchSubmitE, width: 0, marginRight: 0, paddingRight: 0, opacity: 0
+    setStyle changeE, toolbarToggleStyle
+    setStyle searchE, toolbarToggleStyle
     columns.forEach (column) -> column.defaultMode()
     mode = 'default'
 
@@ -98,6 +95,7 @@ module.exports = ->
     isChange = mode is 'change'
     defaultMode()
     unless isChange
+      setStyle changeE, color: '#5BC0DE'
       setStyle changeBorderE, marginTop: 5, padding: 5, background: '#EEE'
       setStyle changeSubmitE, width: 100, marginRight: 5, paddingRight: 5, opacity: 1
       columns.forEach (column) -> column.changeMode()
@@ -107,8 +105,7 @@ module.exports = ->
     isSearch = mode is 'search'
     defaultMode()
     unless isSearch
-      setStyle searchBorderE, marginTop: 5, padding: 5, background: '#EEE'
-      setStyle searchSubmitE, width: 100, marginRight: 10, paddingRight: 5, opacity: 1
+      setStyle searchE, color: '#5BC0DE'
       columns.forEach (column) -> column.searchMode()
       mode = 'search'
 
@@ -120,10 +117,7 @@ module.exports = ->
   if module.hot
     resizeCallback()
 
-
-  bindEvent searchSubmitE, 'click', defaultMode
-
-  alerts = []
+  alerts = filteredAlerts = []
 
   columns.forEach (column) ->
     column.onSearch -> update()
@@ -137,9 +131,11 @@ module.exports = ->
     column.onSearch -> update()
     column.onSort -> update()
     column.onChanged -> update()
-    key = column.getHeaderDescriptor().name
-    alerts.forEach (alert) ->
-      column.addDataItem alert[key]
+    filteredAlerts.forEach (alert) ->
+      key = column.getHeaderDescriptor().name
+      placeholder = E()
+      append placeholder, getDataItem alert, key
+      column.addDataItem placeholder
 
   getDataItem = (alert, key) ->
     switch key
@@ -196,15 +192,15 @@ module.exports = ->
   handleRows = collection addRow, removeRow, changeRow
 
   update = ->
-    alertDefinitionIds = {}
-    filteredAlerts = alerts
-    .filter (alert) ->
-      if alert.fixed is false
-        if alertDefinitionIds[alert.alertDefinitionId]
-          return false
-        else
-          alertDefinitionIds[alert.alertDefinitionId] = true
-      return true
+    filteredAlerts = []
+    alerts.forEach (alert) ->
+      similarAlerts = filteredAlerts.filter ({alertDefinitionId, fixed}) -> alertDefinitionId is alert.alertDefinitionId and fixed is alert.fixed
+      lastAlert = similarAlerts[similarAlerts.length - 1]
+      if lastAlert
+        lastAlert.count++
+      else
+        alert.count = 1
+        filteredAlerts.push alert
 
     sort = null
     columns.forEach (column) ->
@@ -226,8 +222,6 @@ module.exports = ->
 
   state.ready 'alerts', (_alerts) ->
     alerts = alerts.concat _alerts.filter (alert) -> not alerts.some ({id}) -> alert.id is id
-    alerts.forEach (alert) ->
-      alert.count = alerts.filter(({alertDefinitionId}) -> alert.alertDefinitionId is alertDefinitionId).length
     update()
 
   append [header, border]
